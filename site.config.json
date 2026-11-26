@@ -1,0 +1,9 @@
+{
+  "customer": "Example Customer",
+  "defaultTheme": "aura",
+  "defaultVendor": "vaadin-25.3.7",
+  "supabase": {
+    "url": "",
+    "publishableKey": ""
+  }
+}

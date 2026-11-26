@@ -1,0 +1,4 @@
+/* Vaadin 25.3.7 base styles: intentionally empty.
+ * Since Vaadin 25 the base styles are built into each component (vaadin.js) and apply
+ * whenever no theme stylesheet is loaded. This file exists so every prototype loads
+ * "<theme>.css" the same way. Light/dark: the color-scheme property on <html>. */
