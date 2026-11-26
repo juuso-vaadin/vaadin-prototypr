@@ -1,6 +1,6 @@
 {
   "version": "25.3.7",
-  "built": "2026-11-26T13:27:02.638Z",
+  "built": "2026-11-26T13:41:03.423Z",
   "builtWith": "esbuild 0.25.12, node v22.23.5",
   "themes": {
     "aura": "aura.css",
@@ -79,8 +79,8 @@
     },
     {
       "file": "base.css",
-      "bytes": 306,
-      "gzip": 221
+      "bytes": 466,
+      "gzip": 296
     },
     {
       "file": "fonts/InstrumentSans.woff2",

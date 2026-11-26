@@ -15,7 +15,7 @@
  *   aura.css + fonts/             the Aura theme (Instrument Sans font as a separate file)
  *   lumo.css                      the Lumo theme (its icon font is inlined by Vaadin)
  *   lumo-utility.css              optional Lumo utility classes (Lumo only)
- *   base.css                      intentionally empty, see "Base styles" below
+ *   base.css                      page font + colors for base styles, see "Base styles" below
  *   build-info.json               version, package list, sizes
  *   LICENSE-*.txt                 Apache-2.0 licence texts of the bundled packages
  *
@@ -38,19 +38,24 @@
  *            "@vaadin/vaadin-lumo-styles/utility.css", not loaded by default.
  *   - Base styles: there is NO separate package or stylesheet. Since Vaadin 25 every
  *            component ships minimal built-in "base styles" in its JS, which apply
- *            whenever no theme stylesheet is loaded. base.css exists only so that every
- *            prototype loads "<theme>.css" the same way; it contains no rules.
+ *            whenever no theme stylesheet is loaded. They style the components only,
+ *            so base.css adds the page font and the page background/text colors from
+ *            the base tokens (otherwise the page is serif and stays white in dark
+ *            mode). It contains no component styles.
  *
  * Light / dark mechanism (used by viewer/theme-adapters.js)
  *   - Aura:  the CSS `color-scheme` property on <html>: `light` (default), `dark`, or
  *            `light dark` (follow the OS). All Aura colors use light-dark().
  *   - Base:  same as Aura. The base styles use light-dark() too
  *            (component-base/src/styles/style-props.js), so `color-scheme` decides.
- *   - Lumo:  the `theme="dark"` attribute on <html> (selector [theme~='dark'] in
- *            lumo/src/global/color-scheme.css), which also sets color-scheme: dark and
- *            re-sets the registered --vaadin-* color properties. Lumo's colors are
- *            light-dark() based as well, and Flow's ColorScheme.DARK sets both
- *            `color-scheme` and theme="dark" on <html>, so the adapter does both.
+ *   - Lumo:  also the `color-scheme` property. Lumo 25 defines its colors with
+ *            light-dark() on :root (lumo/src/props/color.css), so `color-scheme: dark`
+ *            on <html> switches everything; verified in Chromium, including the
+ *            registered --vaadin-* properties and when set before first paint.
+ *            Lumo still has its older switch, theme="dark" on <html> ([theme~='dark']
+ *            in lumo/src/global/color-scheme.css), which Flow's ColorScheme.DARK adds
+ *            "for backwards compatibility". It isn't used: its higher specificity
+ *            overrides a page's own `html { --lumo-*: light-dark(...) }` dark colors.
  *
  * Left out on purpose
  *   - Commercial components (charts, grid-pro, crud, rich-text-editor, board,
@@ -170,10 +175,13 @@ try {
   }
   writeFileSync(
     join(outDir, 'base.css'),
-    `/* Vaadin ${version} base styles: intentionally empty.\n` +
-      ' * Since Vaadin 25 the base styles are built into each component (vaadin.js) and apply\n' +
-      ' * whenever no theme stylesheet is loaded. This file exists so every prototype loads\n' +
-      ' * "<theme>.css" the same way. Light/dark: the color-scheme property on <html>. */\n',
+    `/* Vaadin ${version} base styles.\n` +
+      ' * The component base styles are built into each component (vaadin.js) and apply\n' +
+      ' * whenever no theme stylesheet is loaded. They style the components only, so this\n' +
+      ' * file gives the page a font and the base background/text colors. Light/dark:\n' +
+      ' * the color-scheme property on <html>. */\n' +
+      'html{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;' +
+      'background-color:var(--vaadin-background-color);color:var(--vaadin-text-color)}\n',
   );
 
   for (const [file, pkg] of [['LICENSE-vaadin-components.txt', 'button'], ['LICENSE-aura.txt', 'aura'], ['LICENSE-lumo.txt', 'vaadin-lumo-styles']]) {
