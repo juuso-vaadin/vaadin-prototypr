@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Customer profile – edit</title>
+  <link rel="stylesheet" href="../../vendor/vaadin-25.3.7/lumo.css" />
+  <script type="module" src="../../vendor/vaadin-25.3.7/vaadin.js"></script>
+  <style>
+    html, body { margin: 0; }
+    body { font-family: var(--lumo-font-family); }
+    .page {
+      max-width: 64rem;
+      margin: 0 auto;
+      padding: var(--lumo-space-l);
+      display: flex;
+      flex-direction: column;
+      gap: var(--lumo-space-m);
+    }
+    vaadin-breadcrumbs { font-size: var(--lumo-font-size-s); }
+    .profile-header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--lumo-space-m); }
+    .profile-header .who { flex: 1 1 14rem; display: flex; flex-direction: column; gap: var(--lumo-space-xs); }
+    .profile-header h1 { margin: 0; font-size: var(--lumo-font-size-xxl); line-height: var(--lumo-line-height-xs); }
+    .profile-header .meta { display: flex; flex-wrap: wrap; gap: var(--lumo-space-s); align-items: center; color: var(--lumo-secondary-text-color); font-size: var(--lumo-font-size-s); }
+    .actions { display: flex; gap: var(--lumo-space-s); }
+    vaadin-tabsheet { border: 1px solid var(--lumo-contrast-10pct); border-radius: var(--lumo-border-radius-l); }
+    .addresses { display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: var(--lumo-space-m); }
+    .addresses vaadin-card p { margin: 0; color: var(--lumo-secondary-text-color); }
+    .section-title { margin: var(--lumo-space-m) 0 var(--lumo-space-s); font-size: var(--lumo-font-size-l); }
+    @media (max-width: 600px) {
+      .page { padding: var(--lumo-space-s); }
+      .actions { width: 100%; }
+      .actions vaadin-button { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <vaadin-breadcrumbs data-proto-id="breadcrumbs" id="crumbs">
+      <vaadin-breadcrumbs-item path="#">Customers</vaadin-breadcrumbs-item>
+      <vaadin-breadcrumbs-item path="#">Alfreds Futterkiste</vaadin-breadcrumbs-item>
+      <vaadin-breadcrumbs-item>Maria Anders</vaadin-breadcrumbs-item>
+    </vaadin-breadcrumbs>
+
+    <section class="profile-header" data-proto-id="profile-header">
+      <vaadin-avatar name="Maria Anders" theme="xlarge" color-index="3"></vaadin-avatar>
+      <div class="who">
+        <h1>Maria Anders</h1>
+        <div class="meta">
+          <span>Alfreds Futterkiste · Customer since 2019</span>
+          <vaadin-badge theme="success">Active</vaadin-badge>
+          <vaadin-badge>Key account</vaadin-badge>
+        </div>
+      </div>
+      <div class="actions" data-proto-id="profile-actions">
+        <vaadin-button id="discard" data-proto-id="discard-button">Discard</vaadin-button>
+        <vaadin-button id="save" data-proto-id="save-button" theme="primary" disabled>Save changes</vaadin-button>
+      </div>
+    </section>
+
+    <vaadin-tabsheet data-proto-id="profile-tabs">
+      <vaadin-tabs slot="tabs">
+        <vaadin-tab id="details-tab">Details</vaadin-tab>
+        <vaadin-tab id="addresses-tab">Addresses</vaadin-tab>
+        <vaadin-tab id="activity-tab">Activity</vaadin-tab>
+      </vaadin-tabs>
+
+      <div tab="details-tab">
+        <vaadin-form-layout auto-responsive expand-columns expand-fields column-width="14rem" max-columns="2" id="details-form" data-proto-id="details-form">
+          <vaadin-form-row>
+            <vaadin-text-field label="First name" value="Maria" required></vaadin-text-field>
+            <vaadin-text-field label="Last name" value="Anders" required></vaadin-text-field>
+          </vaadin-form-row>
+          <vaadin-form-row>
+            <vaadin-email-field label="Email" value="maria.anders@alfreds.example" required error-message="Enter a valid email address"></vaadin-email-field>
+            <vaadin-text-field label="Phone" value="+49 30 0074321"></vaadin-text-field>
+          </vaadin-form-row>
+          <vaadin-form-row>
+            <vaadin-text-field label="Company" value="Alfreds Futterkiste"></vaadin-text-field>
+            <vaadin-combo-box id="segment" label="Segment" value="Retail"></vaadin-combo-box>
+          </vaadin-form-row>
+          <vaadin-form-row>
+            <vaadin-select id="language" label="Preferred language" value="de"></vaadin-select>
+            <vaadin-date-picker label="Contract renewal" value="2027-03-31"></vaadin-date-picker>
+          </vaadin-form-row>
+          <vaadin-form-row>
+            <vaadin-checkbox-group label="Communication" id="comms" data-proto-id="communication-prefs" theme="vertical">
+              <vaadin-checkbox value="newsletter" label="Monthly newsletter"></vaadin-checkbox>
+              <vaadin-checkbox value="shipping" label="Shipping updates by SMS"></vaadin-checkbox>
+              <vaadin-checkbox value="offers" label="Partner offers"></vaadin-checkbox>
+            </vaadin-checkbox-group>
+          </vaadin-form-row>
+          <vaadin-form-row>
+            <vaadin-text-area label="Internal notes" colspan="2" data-proto-id="internal-notes"
+              value="Prefers deliveries before 10:00. Invoices go to accounting@alfreds.example."></vaadin-text-area>
+          </vaadin-form-row>
+        </vaadin-form-layout>
+      </div>
+
+      <div tab="addresses-tab">
+        <div class="addresses" data-proto-id="address-list" id="addresses"></div>
+        <vaadin-button id="add-address" data-proto-id="add-address-button" theme="tertiary" style="margin-top: var(--lumo-space-m)">
+          <vaadin-icon icon="vaadin:plus" slot="prefix"></vaadin-icon>Add address
+        </vaadin-button>
+      </div>
+
+      <div tab="activity-tab">
+        <h3 class="section-title">Recent activity</h3>
+        <vaadin-message-list id="activity" data-proto-id="activity-list"></vaadin-message-list>
+      </div>
+    </vaadin-tabsheet>
+  </div>
+
+  <vaadin-dialog id="address-dialog" data-proto-id="address-dialog" header-title="New address"></vaadin-dialog>
+
+  <script type="module">
+    document.querySelector('#crumbs').addEventListener('click', (e) => e.preventDefault());
+    document.querySelector('#comms').value = ['newsletter', 'shipping'];
+    document.querySelector('#segment').items = ['Retail', 'Wholesale', 'Hospitality', 'Public sector'];
+    document.querySelector('#language').items = [
+      { label: 'German', value: 'de' }, { label: 'English', value: 'en' }, { label: 'Swedish', value: 'sv' }, { label: 'French', value: 'fr' },
+    ];
+
+    // Enable Save once something changes; Discard reloads the page state.
+    const save = document.querySelector('#save');
+    const form = document.querySelector('#details-form');
+    form.addEventListener('change', () => { save.disabled = false; });
+    form.addEventListener('input', () => { save.disabled = false; });
+    document.querySelector('#discard').addEventListener('click', () => location.reload());
+    save.addEventListener('click', () => {
+      const invalid = [...form.querySelectorAll('[required]')].filter((f) => !f.validate());
+      if (invalid.length) return;
+      save.disabled = true;
+      notify('Customer saved.');
+    });
+
+    const addresses = [
+      { kind: 'Billing', lines: ['Obere Str. 57', '12209 Berlin', 'Germany'], primary: true },
+      { kind: 'Shipping', lines: ['Lagerhaus 4, Tor B', 'Am Borsigturm 100', '13507 Berlin, Germany'] },
+    ];
+    function renderAddresses() {
+      const host = document.querySelector('#addresses');
+      host.innerHTML = '';
+      addresses.forEach((a, i) => {
+        const card = document.createElement('vaadin-card');
+        card.setAttribute('theme', 'outlined');
+        card.dataset.protoId = `address-${i + 1}`;
+        card.cardTitle = a.kind;
+        if (a.primary) {
+          const b = document.createElement('vaadin-badge');
+          b.slot = 'header-suffix';
+          b.textContent = 'Primary';
+          card.append(b);
+        }
+        const p = document.createElement('p');
+        p.innerHTML = a.lines.join('<br>');
+        card.append(p);
+        host.append(card);
+      });
+    }
+    renderAddresses();
+
+    const dialog = document.querySelector('#address-dialog');
+    dialog.renderer = (root) => {
+      if (root.firstChild) return;
+      root.innerHTML = `
+        <vaadin-form-layout auto-responsive style="max-width: 28rem">
+          <vaadin-radio-group label="Type" value="Shipping" id="addr-kind">
+            <vaadin-radio-button value="Shipping" label="Shipping"></vaadin-radio-button>
+            <vaadin-radio-button value="Billing" label="Billing"></vaadin-radio-button>
+          </vaadin-radio-group>
+          <vaadin-text-field label="Street" id="addr-street" required></vaadin-text-field>
+          <vaadin-form-row>
+            <vaadin-text-field label="Postal code" id="addr-zip" required></vaadin-text-field>
+            <vaadin-text-field label="City" id="addr-city" required></vaadin-text-field>
+          </vaadin-form-row>
+        </vaadin-form-layout>`;
+    };
+    dialog.footerRenderer = (root) => {
+      if (root.firstChild) return;
+      const cancel = Object.assign(document.createElement('vaadin-button'), { textContent: 'Cancel' });
+      const add = Object.assign(document.createElement('vaadin-button'), { textContent: 'Add address' });
+      add.setAttribute('theme', 'primary');
+      cancel.addEventListener('click', () => { dialog.opened = false; });
+      add.addEventListener('click', () => {
+        const q = (id) => document.querySelector(id);
+        const fields = ['#addr-street', '#addr-zip', '#addr-city'].map(q);
+        if (!fields.map((f) => f.validate()).every(Boolean)) return;
+        addresses.push({ kind: q('#addr-kind').value, lines: [fields[0].value, `${fields[1].value} ${fields[2].value}`] });
+        renderAddresses();
+        dialog.opened = false;
+        notify('Address added.');
+      });
+      root.append(cancel, add);
+    };
+    document.querySelector('#add-address').addEventListener('click', () => { dialog.opened = true; });
+
+    document.querySelector('#activity').items = [
+      { userName: 'Jonas Weber', userColorIndex: 1, time: 'Today 09:12', text: 'Updated the contract renewal date to 31 March 2027.' },
+      { userName: 'Maria Anders', userColorIndex: 3, time: 'Yesterday 16:40', text: 'Asked for invoices to be sent to the accounting address.' },
+      { userName: 'System', userColorIndex: 0, time: '22 Nov 2026', text: 'Order SO-10481 was shipped.' },
+    ];
+
+    function notify(text) {
+      const n = document.createElement('vaadin-notification');
+      n.renderer = (root) => { root.textContent = text; };
+      n.setAttribute('theme', 'success');
+      n.position = 'bottom-start';
+      n.duration = 2500;
+      document.body.append(n);
+      n.opened = true;
+      n.addEventListener('closed', () => n.remove());
+    }
+  </script>
+</body>
+</html>

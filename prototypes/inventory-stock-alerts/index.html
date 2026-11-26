@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Inventory – stock alerts</title>
+  <link rel="stylesheet" href="../../vendor/vaadin-25.3.7/aura.css" />
+  <script type="module" src="../../vendor/vaadin-25.3.7/vaadin.js"></script>
+  <style>
+    html, body { margin: 0; }
+    .page {
+      max-width: 80rem;
+      margin: 0 auto;
+      padding: var(--vaadin-padding-l);
+      display: flex;
+      flex-direction: column;
+      gap: var(--vaadin-gap-l);
+    }
+    .page-header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vaadin-gap-m); }
+    .page-header h1 { margin: 0; flex: 1 1 14rem; font-size: var(--aura-font-size-xl); }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: var(--vaadin-gap-m); }
+    .kpi-value { font-size: calc(var(--aura-font-size-xl) * 1.6); font-weight: var(--aura-font-weight-semibold); line-height: 1.1; }
+    .kpi-note { color: var(--vaadin-text-color-secondary); font-size: var(--aura-font-size-s); }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 20rem; gap: var(--vaadin-gap-l); align-items: start; }
+    .panel-title { margin: 0 0 var(--vaadin-gap-s); font-size: var(--aura-font-size-l); }
+    .level { display: flex; flex-direction: column; gap: var(--vaadin-gap-xs); min-width: 7rem; }
+    .level small { color: var(--vaadin-text-color-secondary); }
+    .suppliers { display: flex; flex-direction: column; gap: var(--vaadin-gap-s); }
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+    @media (max-width: 600px) { .page { padding: var(--vaadin-padding-s); gap: var(--vaadin-gap-m); } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="page-header" data-proto-id="page-header">
+      <h1>Stock alerts</h1>
+      <vaadin-select id="warehouse" data-proto-id="warehouse-select" value="all"></vaadin-select>
+      <vaadin-button id="reorder-all" data-proto-id="reorder-all-button" theme="primary">
+        <vaadin-icon icon="vaadin:cart" slot="prefix"></vaadin-icon>Reorder selected
+      </vaadin-button>
+    </header>
+
+    <section class="kpis" data-proto-id="kpi-cards">
+      <vaadin-card theme="outlined" data-proto-id="kpi-below-minimum">
+        <div slot="title">Below minimum</div>
+        <div class="kpi-value aura-accent-red" style="color: var(--aura-accent-text-color)">7</div>
+        <div class="kpi-note">3 more than last week</div>
+      </vaadin-card>
+      <vaadin-card theme="outlined" data-proto-id="kpi-on-order">
+        <div slot="title">On order</div>
+        <div class="kpi-value">12</div>
+        <div class="kpi-note">Next delivery Fri 28 Nov</div>
+      </vaadin-card>
+      <vaadin-card theme="outlined" data-proto-id="kpi-stock-value">
+        <div slot="title">Stock value</div>
+        <div class="kpi-value">€184k</div>
+        <div class="kpi-note">Across 3 warehouses</div>
+      </vaadin-card>
+    </section>
+
+    <div class="layout">
+      <section data-proto-id="alerts-section">
+        <h2 class="panel-title">Products that need attention</h2>
+        <vaadin-grid id="alerts" data-proto-id="alerts-grid" all-rows-visible>
+          <vaadin-grid-selection-column auto-select></vaadin-grid-selection-column>
+          <vaadin-grid-column path="sku" header="SKU" width="7rem" flex-grow="0"></vaadin-grid-column>
+          <vaadin-grid-column path="name" header="Product" auto-width></vaadin-grid-column>
+          <vaadin-grid-column id="level-col" header="Stock" width="10rem" flex-grow="0"></vaadin-grid-column>
+          <vaadin-grid-column id="state-col" header="Status" width="9rem" flex-grow="0"></vaadin-grid-column>
+          <vaadin-grid-column id="action-col" width="7rem" flex-grow="0" text-align="end"></vaadin-grid-column>
+        </vaadin-grid>
+      </section>
+
+      <aside data-proto-id="suppliers-panel">
+        <h2 class="panel-title">Suppliers</h2>
+        <div class="suppliers">
+          <vaadin-details summary="Nordic Paper AB" opened theme="filled" data-proto-id="supplier-nordic">
+            <div>Lead time 4 days · Min. order €500<br />Contact: Elin Berg</div>
+          </vaadin-details>
+          <vaadin-details summary="Rhein Logistik GmbH" theme="filled" data-proto-id="supplier-rhein">
+            <div>Lead time 2 days · Min. order €250<br />Contact: Tobias Kraus</div>
+          </vaadin-details>
+          <vaadin-details summary="Atlantic Supplies Ltd" theme="filled" data-proto-id="supplier-atlantic">
+            <div>Lead time 9 days · No minimum<br />Contact: Hannah Price</div>
+          </vaadin-details>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <vaadin-dialog id="reorder" data-proto-id="reorder-dialog" header-title="Reorder"></vaadin-dialog>
+
+  <script type="module">
+    const products = [
+      { sku: 'PP-1001', name: 'A4 copy paper, 80 g', stock: 12, min: 60, supplier: 'Nordic Paper AB' },
+      { sku: 'PP-1044', name: 'Recycled envelopes C5', stock: 40, min: 100, supplier: 'Nordic Paper AB' },
+      { sku: 'OF-2210', name: 'Ballpoint pens, blue (50)', stock: 8, min: 20, supplier: 'Atlantic Supplies Ltd' },
+      { sku: 'OF-2302', name: 'Sticky notes 76×76', stock: 35, min: 40, supplier: 'Atlantic Supplies Ltd' },
+      { sku: 'PK-3100', name: 'Shipping boxes, medium', stock: 0, min: 150, supplier: 'Rhein Logistik GmbH' },
+      { sku: 'PK-3120', name: 'Packing tape, clear', stock: 22, min: 30, supplier: 'Rhein Logistik GmbH' },
+      { sku: 'PK-3188', name: 'Bubble wrap roll 50 m', stock: 3, min: 10, supplier: 'Rhein Logistik GmbH' },
+    ];
+    document.querySelector('#warehouse').items = [
+      { label: 'All warehouses', value: 'all' }, { label: 'Berlin', value: 'ber' }, { label: 'Hamburg', value: 'ham' }, { label: 'Munich', value: 'muc' },
+    ];
+
+    const grid = document.querySelector('#alerts');
+    grid.items = products;
+    document.querySelector('#level-col').renderer = (root, _c, { item }) => {
+      root.innerHTML = `<div class="level"><vaadin-progress-bar></vaadin-progress-bar><small>${item.stock} / ${item.min} min.</small></div>`;
+      const bar = root.querySelector('vaadin-progress-bar');
+      bar.value = Math.min(item.stock / item.min, 1);
+      if (item.stock / item.min < 0.25) bar.setAttribute('theme', 'error');
+    };
+    document.querySelector('#state-col').renderer = (root, _c, { item }) => {
+      const [label, theme] = item.ordered ? ['On order', ''] : item.stock === 0 ? ['Out of stock', 'error filled'] : item.stock / item.min < 0.25 ? ['Critical', 'error'] : ['Low', 'warning'];
+      root.innerHTML = '';
+      const badge = document.createElement('vaadin-badge');
+      if (theme) badge.setAttribute('theme', theme);
+      badge.textContent = label;
+      root.append(badge);
+    };
+    document.querySelector('#action-col').renderer = (root, _c, { item }) => {
+      if (!root.firstChild) {
+        root.innerHTML = '<vaadin-button theme="tertiary small">Reorder</vaadin-button>';
+        root.firstChild.addEventListener('click', (e) => { e.stopPropagation(); openReorder([root.firstChild.item]); });
+      }
+      root.firstChild.item = item;
+      root.firstChild.disabled = !!item.ordered;
+    };
+
+    let pending = [];
+    const dialog = document.querySelector('#reorder');
+    function openReorder(items) {
+      pending = items.filter((i) => !i.ordered);
+      if (!pending.length) return;
+      dialog.headerTitle = pending.length === 1 ? `Reorder ${pending[0].name}` : `Reorder ${pending.length} products`;
+      dialog.requestContentUpdate();
+      dialog.opened = true;
+    }
+    dialog.renderer = (root) => {
+      root.innerHTML = '';
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'display:flex;flex-direction:column;gap:var(--vaadin-gap-s);min-width:min(24rem,80vw)';
+      for (const p of pending) {
+        const f = document.createElement('vaadin-integer-field');
+        f.label = `${p.name} (${p.supplier})`;
+        f.value = String(Math.max(p.min * 2 - p.stock, 0));
+        f.min = 1;
+        f.stepButtonsVisible = true;
+        wrap.append(f);
+      }
+      const date = document.createElement('vaadin-date-picker');
+      date.label = 'Deliver by';
+      date.value = '2026-12-04';
+      wrap.append(date);
+      root.append(wrap);
+    };
+    dialog.footerRenderer = (root) => {
+      if (root.firstChild) return;
+      const cancel = Object.assign(document.createElement('vaadin-button'), { textContent: 'Cancel' });
+      const send = Object.assign(document.createElement('vaadin-button'), { textContent: 'Send purchase order' });
+      send.setAttribute('theme', 'primary');
+      cancel.addEventListener('click', () => { dialog.opened = false; });
+      send.addEventListener('click', () => {
+        pending.forEach((p) => { p.ordered = true; });
+        grid.selectedItems = [];
+        grid.clearCache?.();
+        grid.requestContentUpdate();
+        dialog.opened = false;
+        const n = document.createElement('vaadin-notification');
+        n.renderer = (r) => { r.textContent = `Purchase order sent for ${pending.length} product${pending.length === 1 ? '' : 's'}.`; };
+        n.setAttribute('theme', 'success');
+        n.position = 'bottom-center';
+        n.duration = 3000;
+        document.body.append(n);
+        n.opened = true;
+      });
+      root.append(cancel, send);
+    };
+    document.querySelector('#reorder-all').addEventListener('click', () => openReorder(grid.selectedItems.length ? grid.selectedItems : products));
+  </script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "title": "Order list – bulk actions",
+  "area": "Orders",
+  "description": "Adds bulk status changes to the order grid. Compares a toolbar above the grid with a floating footer that appears on selection.",
+  "created": "2026-11-26",
+  "status": "in-review",
+  "vendor": "vaadin-25.3.7",
+  "theme": "aura",
+  "variants": [
+    { "id": "a", "label": "Toolbar actions" },
+    { "id": "b", "label": "Selection footer" }
+  ],
+  "snapshots": []
+}

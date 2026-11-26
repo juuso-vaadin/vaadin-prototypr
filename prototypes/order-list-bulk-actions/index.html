@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Orders – bulk actions</title>
+  <link rel="stylesheet" href="../../vendor/vaadin-25.3.7/aura.css" />
+  <script type="module" src="../../vendor/vaadin-25.3.7/vaadin.js"></script>
+  <style>
+    html, body { margin: 0; height: 100%; }
+    .view {
+      display: flex;
+      flex-direction: column;
+      gap: var(--vaadin-gap-m);
+      padding: var(--vaadin-padding-l);
+      height: 100%;
+      box-sizing: border-box;
+    }
+    .view-header { display: flex; flex-wrap: wrap; align-items: end; gap: var(--vaadin-gap-m); }
+    .view-header h1 { margin: 0; flex: 1 1 12rem; font-size: var(--aura-font-size-xl); }
+    .filters { display: flex; flex-wrap: wrap; gap: var(--vaadin-gap-s); }
+    .filters vaadin-text-field { width: 16rem; max-width: 100%; }
+    .toolbar {
+      display: flex; flex-wrap: wrap; align-items: center; gap: var(--vaadin-gap-s);
+      min-height: 2.5rem;
+    }
+    .toolbar .count { color: var(--vaadin-text-color-secondary); margin-inline-end: auto; }
+    vaadin-grid { flex: 1; min-height: 16rem; }
+    .footer {
+      display: none;
+      align-items: center; gap: var(--vaadin-gap-s); flex-wrap: wrap;
+      padding: var(--vaadin-padding-s) var(--vaadin-padding-m);
+      border-radius: var(--vaadin-radius-l);
+      box-shadow: var(--aura-shadow-m);
+    }
+    .footer[data-open] { display: flex; }
+    .footer strong { margin-inline-end: auto; }
+    .num { font-variant-numeric: tabular-nums; }
+    @media (max-width: 600px) {
+      .view { padding: var(--vaadin-padding-s); }
+      .filters vaadin-text-field, .filters vaadin-select { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <vaadin-app-layout data-proto-id="app-layout">
+    <vaadin-drawer-toggle slot="navbar"></vaadin-drawer-toggle>
+    <h2 slot="navbar" style="margin: 0; font-size: var(--aura-font-size-l);">Northwind Commerce</h2>
+    <vaadin-side-nav slot="drawer" data-proto-id="main-nav">
+      <vaadin-side-nav-item path="/dashboard"><vaadin-icon icon="vaadin:dashboard" slot="prefix"></vaadin-icon>Dashboard</vaadin-side-nav-item>
+      <vaadin-side-nav-item id="nav-orders" path="/orders"><vaadin-icon icon="vaadin:cart" slot="prefix"></vaadin-icon>Orders</vaadin-side-nav-item>
+      <vaadin-side-nav-item path="/customers"><vaadin-icon icon="vaadin:users" slot="prefix"></vaadin-icon>Customers</vaadin-side-nav-item>
+      <vaadin-side-nav-item path="/inventory"><vaadin-icon icon="vaadin:stock" slot="prefix"></vaadin-icon>Inventory</vaadin-side-nav-item>
+    </vaadin-side-nav>
+
+    <main class="view">
+      <section class="view-header" data-proto-id="orders-header">
+        <h1>Orders</h1>
+        <div class="filters" data-proto-id="order-filters">
+          <vaadin-text-field id="search" placeholder="Search order or customer" clear-button-visible>
+            <vaadin-icon icon="vaadin:search" slot="prefix"></vaadin-icon>
+          </vaadin-text-field>
+          <vaadin-select id="status-filter" placeholder="Any status"></vaadin-select>
+        </div>
+      </section>
+
+      <!-- Variant a: bulk actions in a toolbar above the grid -->
+      <section class="toolbar" data-proto-id="bulk-toolbar" hidden>
+        <span class="count" id="toolbar-count">No orders selected</span>
+        <vaadin-button id="toolbar-ship" data-proto-id="bulk-mark-shipped" disabled>
+          <vaadin-icon icon="vaadin:truck" slot="prefix"></vaadin-icon>Mark as shipped
+        </vaadin-button>
+        <vaadin-menu-bar id="toolbar-more" data-proto-id="bulk-more-actions" theme="tertiary" disabled></vaadin-menu-bar>
+      </section>
+
+      <vaadin-grid id="grid" data-proto-id="orders-grid" theme="row-stripes">
+        <vaadin-grid-selection-column auto-select frozen></vaadin-grid-selection-column>
+        <vaadin-grid-sort-column path="id" header="Order" width="7rem" flex-grow="0"></vaadin-grid-sort-column>
+        <vaadin-grid-sort-column path="customer" header="Customer" auto-width></vaadin-grid-sort-column>
+        <vaadin-grid-sort-column path="date" header="Date" width="8rem" flex-grow="0"></vaadin-grid-sort-column>
+        <vaadin-grid-column id="status-col" header="Status" width="9rem" flex-grow="0"></vaadin-grid-column>
+        <vaadin-grid-sort-column id="total-col" path="total" header="Total" width="8rem" flex-grow="0" text-align="end"></vaadin-grid-sort-column>
+      </vaadin-grid>
+
+      <!-- Variant b: a floating footer that appears when rows are selected -->
+      <section class="footer aura-surface-solid" data-proto-id="selection-footer">
+        <strong id="footer-count"></strong>
+        <vaadin-button id="footer-clear" theme="tertiary">Clear</vaadin-button>
+        <vaadin-button id="footer-cancel" data-proto-id="bulk-cancel" theme="error">Cancel orders</vaadin-button>
+        <vaadin-button id="footer-ship" data-proto-id="bulk-mark-shipped" theme="primary">Mark as shipped</vaadin-button>
+      </section>
+    </main>
+  </vaadin-app-layout>
+
+  <vaadin-confirm-dialog id="confirm" data-proto-id="bulk-confirm-dialog" cancel-button-visible></vaadin-confirm-dialog>
+
+  <script type="module">
+    // Prototype navigation: mark Orders as current and keep nav clicks on this page.
+    document.querySelector('#nav-orders').path = location.pathname;
+    document.querySelector('vaadin-side-nav').addEventListener('click', (e) => e.preventDefault());
+
+    const variant = new URLSearchParams(location.search).get('variant') === 'b' ? 'b' : 'a';
+    document.documentElement.dataset.variant = variant;
+
+    const STATUSES = { new: ['New', ''], processing: ['Processing', 'warning'], shipped: ['Shipped', 'success'], cancelled: ['Cancelled', 'error'] };
+    const customers = ['Alfreds Futterkiste', 'Berglunds snabbköp', 'Blondel père et fils', 'Bólido Comidas', 'Bon app\'', 'Bottom-Dollar Markets', 'Cactus Comidas', 'Centro comercial Moctezuma', 'Chop-suey Chinese', 'Comércio Mineiro', 'Drachenblut Delikatessen', 'Du monde entier', 'Eastern Connection', 'Ernst Handel', 'Familia Arquibaldo', 'Folk och fä HB', 'Frankenversand', 'France restauration'];
+    const statusKeys = ['new', 'processing', 'processing', 'shipped', 'shipped', 'shipped', 'cancelled'];
+    let orders = Array.from({ length: 42 }, (_, i) => ({
+      id: `SO-${10480 + i}`,
+      customer: customers[(i * 7) % customers.length],
+      date: new Date(2026, 10, 25 - Math.floor(i / 2)).toISOString().slice(0, 10),
+      status: statusKeys[(i * 5) % statusKeys.length],
+      total: Math.round(((i * 7919) % 2400) + 85.5),
+    }));
+
+    const grid = document.querySelector('#grid');
+    const search = document.querySelector('#search');
+    const statusFilter = document.querySelector('#status-filter');
+    const confirm = document.querySelector('#confirm');
+    const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR' });
+
+    statusFilter.items = [{ label: 'Any status', value: '' }, ...Object.entries(STATUSES).map(([value, [label]]) => ({ label, value }))];
+    document.querySelector('#status-col').renderer = (root, _col, { item }) => {
+      const [label, theme] = STATUSES[item.status];
+      root.innerHTML = '';
+      const badge = document.createElement('vaadin-badge');
+      if (theme) badge.setAttribute('theme', theme);
+      badge.textContent = label;
+      root.append(badge);
+    };
+    document.querySelector('#total-col').renderer = (root, _col, { item }) => {
+      root.innerHTML = `<span class="num">${money.format(item.total)}</span>`;
+    };
+
+    function refresh() {
+      const q = search.value.trim().toLowerCase();
+      const s = statusFilter.value;
+      grid.items = orders.filter((o) => (!s || o.status === s) && (!q || o.id.toLowerCase().includes(q) || o.customer.toLowerCase().includes(q)));
+    }
+    search.addEventListener('value-changed', refresh);
+    statusFilter.addEventListener('value-changed', refresh);
+    refresh();
+
+    function applyStatus(status) {
+      const ids = new Set(grid.selectedItems.map((o) => o.id));
+      const n = ids.size;
+      orders = orders.map((o) => (ids.has(o.id) ? { ...o, status } : o));
+      grid.selectedItems = [];
+      refresh();
+      onSelection();
+      const label = STATUSES[status][0].toLowerCase();
+      const note = document.createElement('vaadin-notification');
+      note.renderer = (root) => { root.textContent = `${n} order${n === 1 ? '' : 's'} marked as ${label}.`; };
+      note.setAttribute('theme', 'success');
+      note.position = 'bottom-center';
+      note.duration = 3000;
+      document.body.append(note);
+      note.opened = true;
+      note.addEventListener('closed', () => note.remove());
+    }
+
+    function ask(status) {
+      const n = grid.selectedItems.length;
+      const label = STATUSES[status][0].toLowerCase();
+      confirm.header = `Mark ${n} order${n === 1 ? '' : 's'} as ${label}?`;
+      confirm.message = status === 'cancelled'
+        ? 'Customers are notified and payments are refunded. This cannot be undone.'
+        : 'Customers receive a shipping confirmation email.';
+      confirm.confirmText = `Mark as ${label}`;
+      confirm.confirmTheme = status === 'cancelled' ? 'error primary' : 'primary';
+      confirm.opened = true;
+      confirm.onconfirm = () => applyStatus(status);
+    }
+    confirm.addEventListener('confirm', () => confirm.onconfirm?.());
+
+    // Variant a: toolbar
+    const toolbar = document.querySelector('.toolbar');
+    const more = document.querySelector('#toolbar-more');
+    more.items = [{ text: 'More actions', children: [{ text: 'Mark as processing', status: 'processing' }, { text: 'Cancel orders', status: 'cancelled' }] }];
+    more.addEventListener('item-selected', (e) => e.detail.value.status && ask(e.detail.value.status));
+    document.querySelector('#toolbar-ship').addEventListener('click', () => ask('shipped'));
+
+    // Variant b: footer
+    const footer = document.querySelector('.footer');
+    document.querySelector('#footer-ship').addEventListener('click', () => ask('shipped'));
+    document.querySelector('#footer-cancel').addEventListener('click', () => ask('cancelled'));
+    document.querySelector('#footer-clear').addEventListener('click', () => { grid.selectedItems = []; onSelection(); });
+
+    if (variant === 'a') { toolbar.hidden = false; footer.remove(); } else { toolbar.remove(); }
+
+    function onSelection() {
+      const n = grid.selectedItems.length;
+      const text = n ? `${n} order${n === 1 ? '' : 's'} selected` : 'No orders selected';
+      if (variant === 'a') {
+        document.querySelector('#toolbar-count').textContent = text;
+        document.querySelector('#toolbar-ship').disabled = !n;
+        more.disabled = !n;
+      } else {
+        document.querySelector('#footer-count').textContent = text;
+        footer.toggleAttribute('data-open', n > 0);
+      }
+    }
+    grid.addEventListener('selected-items-changed', onSelection);
+    onSelection();
+    // Start with a few rows selected so both variants show their bulk UI at rest.
+    customElements.whenDefined('vaadin-grid').then(() => {
+      grid.selectedItems = grid.items.slice(1, 4);
+    });
+  </script>
+</body>
+</html>
