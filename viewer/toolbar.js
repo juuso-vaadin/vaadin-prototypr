@@ -76,7 +76,8 @@ export function createTopBar(host, { onChange, onToggleSidebar }) {
       state = s;
       const { proto } = view;
       host.classList.toggle('pv-topbar-setup', !!view.setup);
-      $('.pv-title').textContent = view.setup ? 'Set up comments' : proto ? proto.title : 'Prototypes';
+      host.classList.toggle('pv-topbar-empty', !proto && !view.setup);
+      $('.pv-title').textContent = view.setup ? 'Set up comments' : proto ? proto.title : view.customer || 'Prototypes';
       $('.pv-meta').innerHTML = proto
         ? [
             escapeHtml(proto.area),

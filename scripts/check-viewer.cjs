@@ -14,6 +14,13 @@
  * links and copy link, search, archived filter, history, no external requests, no
  * console errors, and the prototype-switch time against the ~500 ms target.
  */
+// These checks drive the template's example prototypes. A customer site made with
+// scripts/init-site.mjs has removed them, so the checks belong to the template repo.
+if (!require('node:fs').existsSync(require('node:path').join(__dirname, '..', 'prototypes', 'order-list-bulk-actions'))) {
+  console.error('This check runs in the template repository: it uses the example prototypes, which this site has removed.');
+  process.exit(2);
+}
+
 const { chromium } = require('playwright');
 const { spawn, execFileSync } = require('node:child_process');
 const { mkdirSync } = require('node:fs');

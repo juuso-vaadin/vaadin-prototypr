@@ -151,7 +151,7 @@ export async function startViewer(root, { manifestUrl = 'manifest.json', configU
       return store.set({ variant: state.variant === view.variant ? state.variant : null, snapshot: view.snapshot }, { replace: true });
     }
     sidebar.render(state);
-    topBar.render(state, view);
+    topBar.render(state, { ...view, customer: manifest.customer });
     comments.view(state, view);
     sizeMenu.setWidth(state.width);
     stage.setWidth(state.width);
@@ -159,7 +159,13 @@ export async function startViewer(root, { manifestUrl = 'manifest.json', configU
     if (!view.proto) {
       stage.showMessage(prototypes.length
         ? `No prototype called <code>${escapeHtml(state.slug)}</code>. Pick one from the list.`
-        : 'No prototypes yet. Add one under <code>prototypes/&lt;slug&gt;/</code>.');
+        : `<div class="pv-empty-site">
+             <h2>No prototypes yet</h2>
+             <p>Prototypes for ${escapeHtml(manifest.customer || 'this site')} appear here once they’re on the <code>main</code> branch.</p>
+             <p>To make one, open this repository in Claude Code and describe the screen, for example:<br>
+             <em>“Create a prototype of the order list with bulk actions, in two variants.”</em></p>
+             ${siteConfig.comments?.backend !== 'none' ? '<p class="pv-c-note">Comments: <a href="#/setup">set-up guide</a></p>' : ''}
+           </div>`);
       return;
     }
     stage.show({ url: view.frameUrl, theme: view.theme, scheme: state.scheme });

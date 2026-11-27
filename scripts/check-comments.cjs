@@ -16,6 +16,13 @@
  * project (the SQL rules themselves are tested against Postgres separately).
  * Part 3: the setup guide and "backend": "none".
  */
+// These checks drive the template's example prototypes. A customer site made with
+// scripts/init-site.mjs has removed them, so the checks belong to the template repo.
+if (!require('node:fs').existsSync(require('node:path').join(__dirname, '..', 'prototypes', 'order-list-bulk-actions'))) {
+  console.error('This check runs in the template repository: it uses the example prototypes, which this site has removed.');
+  process.exit(2);
+}
+
 const { chromium } = require('playwright');
 const { spawn, execFileSync } = require('node:child_process');
 const { randomUUID } = require('node:crypto');

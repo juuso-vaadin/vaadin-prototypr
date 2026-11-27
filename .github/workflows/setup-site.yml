@@ -1,0 +1,87 @@
+# "Set up site": turns a repository created from the template into one customer's
+# site, from the browser (Actions → Set up site → Run workflow). Runs
+# scripts/init-site.mjs, commits the result to the selected branch, and starts the
+# first deployment. See docs/new-customer-site.md.
+name: Set up site
+
+on:
+  workflow_dispatch:
+    inputs:
+      customer:
+        description: Customer name shown on the site (e.g. ACME Corp)
+        required: true
+        type: string
+      theme:
+        description: Vaadin theme for this site's prototypes
+        type: choice
+        options: [aura, lumo, base]
+        default: aura
+      comments:
+        description: Comments (password-protected, stored in the shared Supabase project)
+        type: choice
+        options: ['on', 'off']
+        default: 'on'
+      project:
+        description: Comment project id (leave empty to derive it from the customer name)
+        required: false
+        type: string
+      keep_examples:
+        description: Keep the template's example prototypes
+        type: boolean
+        default: false
+
+permissions:
+  contents: write # commit the set-up site
+  actions: write # start the deploy workflow
+
+jobs:
+  setup:
+    # Never run in the template repository itself.
+    if: ${{ !github.event.repository.is_template }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Set up the site
+        # Inputs go through env, not into the script text (no shell injection).
+        env:
+          CUSTOMER: ${{ inputs.customer }}
+          THEME: ${{ inputs.theme }}
+          COMMENTS: ${{ inputs.comments }}
+          PROJECT: ${{ inputs.project }}
+          KEEP: ${{ inputs.keep_examples }}
+        run: |
+          args=(--customer "$CUSTOMER" --theme "$THEME")
+          if [ -n "$PROJECT" ]; then args+=(--project "$PROJECT"); fi
+          if [ "$COMMENTS" = "off" ]; then args+=(--no-comments); fi
+          if [ "$KEEP" = "true" ]; then args+=(--keep-examples); fi
+          node scripts/init-site.mjs "${args[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
+          node scripts/build-manifest.mjs --strict
+      - name: Commit
+        env:
+          CUSTOMER: ${{ inputs.customer }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Set up the prototype site for $CUSTOMER"
+          git push
+      - name: Deploy
+        # A push made with the workflow token doesn't start other workflows, so start
+        # the deployment explicitly.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run pages.yml --ref "${{ github.ref_name }}"
+          site="https://${GITHUB_REPOSITORY_OWNER,,}.github.io/${GITHUB_REPOSITORY#*/}/"
+          {
+            echo ""
+            echo "### Next"
+            echo "- The deployment is running (Actions → Deploy to GitHub Pages). If it fails with a Pages error, set Settings → Pages → Source to **GitHub Actions** and run it again."
+            echo "- Then open $site"
+            if [ "${{ inputs.comments }}" = "on" ]; then
+              echo "- Comments: open ${site}#/setup, step 2, to create this site's comment password."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

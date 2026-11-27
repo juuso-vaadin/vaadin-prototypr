@@ -89,7 +89,8 @@ for (const slug of slugs.sort()) {
 const vendorRoot = join(root, 'vendor');
 if (existsSync(vendorRoot)) {
   for (const v of readdirSync(vendorRoot)) {
-    if (statSync(join(vendorRoot, v)).isDirectory() && !usedVendors.has(v)) {
+    // The default vendor is what new prototypes use, so it's never "unused".
+    if (statSync(join(vendorRoot, v)).isDirectory() && !usedVendors.has(v) && v !== site.defaultVendor) {
       warnings.push(`vendor/${v} is not used by any prototype or snapshot; remove it (§7.2)`);
     }
   }

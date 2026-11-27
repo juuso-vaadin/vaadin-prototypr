@@ -416,3 +416,11 @@ kbd { font: 600 11px/1 var(--pv-font); padding: 2px 5px; border: 1px solid var(-
 .pv-optional { color: var(--pv-text-3); }
 .pv-rename { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 6px; }
 .pv-c-foot .pv-c-note strong { color: var(--pv-text-2); }
+
+/* ---- Empty site ------------------------------------------------------------- */
+.pv-empty-site { max-width: 460px; text-align: left; }
+.pv-empty-site h2 { margin: 0 0 8px; font-size: 18px; color: var(--pv-text); }
+.pv-empty-site p { margin: 0 0 12px; }
+.pv-empty-site em { color: var(--pv-text); }
+.pv-empty-site a { color: var(--pv-accent-text); }
+.pv-topbar-empty .pv-controls > :not(.pv-comments-button) { display: none; }
