@@ -38,6 +38,7 @@ Known consequence: the prototype pages on GitHub Pages are public to anyone who 
 /
 ├─ SPEC.md                    this file
 ├─ CLAUDE.md                  rules for agents creating prototypes (see §8)
+├─ index.html                 starts the viewer (the only viewer file outside /viewer)
 ├─ docs/
 │  └─ background-ai-driven-html-prototyping.md   context: the discussion paper behind this project
 ├─ site.config.json           customer name, Supabase URL + publishable key, default vendor version, defaultTheme
@@ -47,11 +48,13 @@ Known consequence: the prototype pages on GitHub Pages are public to anyone who 
 │     ├─ meta.json            metadata (see §4.2)
 │     └─ v<N>/index.html      optional frozen snapshots of earlier versions
 ├─ vendor/
-│  └─ vaadin-<version>/       bundled Vaadin web components + theme CSS for aura, lumo and base (committed)
-├─ viewer/                    the viewer app (static HTML/JS/CSS, no framework needed)
+│  └─ vaadin-<version>/       vaadin.js + aura.css (+ fonts/), lumo.css, base.css, build-info.json (committed, §7)
+├─ viewer/                    the viewer app (plain HTML/CSS/ES modules, no dependencies, no build step)
 ├─ scripts/
 │  ├─ build-vendor.mjs        bundles components + theme from npm into /vendor/vaadin-<version>/
-│  ├─ build-manifest.mjs      creates manifest.json from prototypes/*/meta.json + git history
+│  ├─ build-manifest.mjs      creates manifest.json from prototypes/*/meta.json + git history, and validates them
+│  ├─ serve.mjs               dependency-free local server with the deployed layout (--pages mimics Pages caching)
+│  ├─ check-viewer.cjs        Playwright end-to-end check of the viewer, incl. switch timing (§7.1)
 │  ├─ new-prototype.mjs       creates a new prototype folder from a starter file
 │  └─ fetch-comments.mjs      prints open comments for a prototype as markdown (for agents)
 ├─ supabase/
@@ -59,7 +62,9 @@ Known consequence: the prototype pages on GitHub Pages are public to anyone who 
 └─ .github/workflows/pages.yml  builds the manifest and deploys to GitHub Pages
 ```
 
-The deployed site layout: `/` = viewer, `/prototypes/...`, `/vendor/...`, `/manifest.json`. Everything is served from the same domain. The viewer relies on this (§5.3).
+The deployed site layout: `/` = viewer, `/prototypes/...`, `/vendor/...`, `/manifest.json`. Everything is served from the same domain. The viewer relies on this (§5.3). All paths are relative, so the site also works under a project-pages subpath (`https://<org>.github.io/<repo>/`).
+
+`manifest.json` is generated (in CI and locally before serving) and isn't committed. The root `index.html` only imports `viewer/main.js` and calls `startViewer(element, { manifestUrl })`; the viewer knows nothing else about the repository, which keeps it extractable (C9).
 
 ## 4. Prototypes
 
@@ -88,31 +93,36 @@ The deployed site layout: `/` = viewer, `/prototypes/...`, `/vendor/...`, `/mani
 
 ### 4.3 Versions
 - The **current version** of a prototype is the SHA of the latest commit that touched its folder. `build-manifest.mjs` works it out from git history (the Actions checkout needs full history: `fetch-depth: 0`).
-- GitHub Pages serves only the latest state. When a state needs to stay viewable (for example after a customer review), copy it into a `v<N>/` subfolder and list it in `snapshots`.
+- GitHub Pages serves only the latest state. When a state needs to stay viewable (for example after a customer review), copy it into a `v<N>/` subfolder and list it in `snapshots`. The copy is one level deeper, so its vendor paths become `../../../vendor/...`; `build-manifest.mjs` checks that every listed snapshot exists. Snapshots are never edited afterwards. A snapshot keeps the variants it had, and the viewer passes `?variant=` to it the same way.
 
 ## 5. Viewer
 
 ### 5.1 Features (v1)
-- **Prototype list**: a sidebar grouped by `area`, with search (title, area, description), a status badge, and a count of open comments. Archived prototypes are hidden by default.
+- **Prototype list**: a sidebar grouped by `area`, with search (title, area, description), a status badge, and a count of open comments. Archived prototypes are hidden by default (a deep link to an archived prototype still opens it and shows it in the list).
 - **Stage**: the selected prototype is shown in an iframe.
-- **Screen widths**: presets for Phone 390, Tablet 768, Laptop 1280, Desktop 1440 and Full. A custom width can be dragged. The current width is shown.
+- **Screen widths**: presets for Phone 390, Tablet 768, Laptop 1280, Desktop 1440 and Full. A custom width can be dragged (handles on both edges, the frame stays centred) or typed. The current width and height are shown. When a width doesn't fit the stage, the frame is scaled down to fit and the scale is shown; the prototype still sees the full width.
 - **Theme**: a light/dark toggle.
 - **Variant and snapshot switchers** (when `meta.json` lists them).
 - **Open in new tab**, and **copy link**.
 - **Comment mode** toggle, plus a comments panel (§6).
-- **Deep links**: the URL hash holds all state, e.g. `#/p/<slug>?variant=b&w=390&theme=dark&thread=<id>`. Opening that link restores the same view.
+- **Deep links**: the URL hash holds all state, e.g. `#/p/<slug>?variant=b&snapshot=v1&w=390&theme=dark&thread=<id>`. Defaults are left out (first variant, current version, Full width, light). Opening that link restores the same view. Back/forward move between prototypes and variants; width and theme changes replace the history entry instead of adding one. Unknown parameters are kept as they are. Opening `/` without a hash shows the first non-archived prototype.
 - Works on a laptop screen first. Viewing on a phone is a nice-to-have.
 
 ### 5.2 Data
 The viewer loads `/manifest.json`, which `build-manifest.mjs` generates:
 ```json
-{ "generated": "…", "customer": "…",
+{ "generated": "…", "customer": "…", "defaultTheme": "aura",
   "prototypes": [ { "slug": "…", "path": "prototypes/<slug>/", "version": "<sha>", "updated": "…", …meta } ] }
 ```
+`build-manifest.mjs` also validates the prototypes: required `meta.json` fields, slug and id formats, that `index.html` loads the `vendor` and `theme` that `meta.json` names, no external `src`/`href`, and that listed snapshots exist. It warns about prototypes on a theme other than `defaultTheme` (C6b) and about unused vendor folders (§7.2). In CI it runs with `--strict`, which fails the deploy on errors. Locally, uncommitted changes to a prototype show its version as `<sha>+dirty`.
 
 ### 5.3 Same-origin control
 The viewer and the prototypes are on the same domain, so the viewer can work directly inside the prototype's frame (`iframe.contentDocument`). There's no messaging protocol between them. This is how theme switching, comment-click capture and drawing pins work.
-- Light/dark: each theme has its own documented mechanism (check them for Vaadin 25; e.g. Lumo uses a `theme="dark"` attribute on the root element, and Aura and the base styles may rely on `color-scheme`). Put the mapping in one small adapter, selected by the prototype's `theme` in the manifest, and apply it to the frame's root element. The rest of the viewer stays theme-agnostic.
+- Light/dark: the mapping lives in one small adapter (`viewer/theme-adapters.js`), selected by the prototype's `theme` in the manifest and applied to the frame's root element. The rest of the viewer stays theme-agnostic. In Vaadin 25 all three use the same mechanism, the CSS `color-scheme` property on `<html>`, because their colors are defined with `light-dark()`:
+  - **Aura** and the **base styles**: `color-scheme` is their documented switch.
+  - **Lumo**: `color-scheme` switches Lumo 25 completely (verified in the browser, including the registered `--vaadin-*` properties). Lumo's older switch, `theme="dark"` on `<html>`, is deliberately not used: its `[theme~='dark']` rule has higher specificity than a page's `html { --lumo-*: light-dark(…) }` and would override a customer's own dark colors. Vaadin's 25 docs describe it as kept for backwards compatibility.
+  - The three stay separate adapter entries, so a theme or a later Vaadin version can change its mechanism without touching the rest of the viewer.
+- The scheme is set as an inline style on the new document's root element as soon as that element exists, before first paint, and again on `DOMContentLoaded` and `load`, so switching prototypes in dark mode doesn't flash light. Toggling light/dark doesn't reload the prototype.
 - Width: the iframe's own width. The prototype's media queries then behave as they would on a real screen.
 
 ## 6. Comments
@@ -129,7 +139,7 @@ The viewer and the prototypes are on the same domain, so the viewer can work dir
 ### 6.2 Backend: Supabase
 - One Supabase project (EU region) serves all customer sites. The viewer talks to it directly with the publishable (anon) key, which sits in `site.config.json` and is safe to make public. Access rules (row-level security, RLS) do all the protecting.
 - Supabase **anonymous sign-in** gives each commenter an identity without an account. The display name is stored with each comment.
-- **Keeping customers apart:** each customer is a `project` row with a secret **share token**. The token is never committed. It travels in the link fragment (`#t=<token>`) and is kept in browser storage after the first visit. The viewer sends it on every request as a custom header (`x-share-token`). The access rules allow reading and writing only for rows whose project matches that token (store the token hashed and compare with `request.headers`). If there's no valid token, the viewer works read-only and shows no comments.
+- **Keeping customers apart:** each customer is a `project` row with a secret **share token**. The token is never committed. It travels in the link fragment as a parameter of the deep-link hash (`#/p/<slug>?t=<token>`, or `#/?t=<token>`), because the fragment also holds the view state (§5.1). After the first visit it is kept in browser storage and removed from the address bar, so **copy link** never copies the token by accident; sharing with a new person uses a separate "copy share link" that adds it. The viewer sends it on every request as a custom header (`x-share-token`). The access rules allow reading and writing only for rows whose project matches that token (store the token hashed and compare with `request.headers`). If there's no valid token, the viewer works read-only and shows no comments.
 
 ### 6.3 Data model (sketch, final version in `supabase/schema.sql`)
 ```
@@ -156,7 +166,13 @@ When drawing: find the element again, then place the pin at `offset` inside its 
 
 ## 7. Build and deploy
 - `.github/workflows/pages.yml`: on push to `main`, check out with full history, run `build-manifest.mjs`, upload the site, and deploy with `actions/deploy-pages`.
-- `vendor/` is committed. `build-vendor.mjs` runs only when someone deliberately upgrades the Vaadin version (Vaadin web component packages from npm, bundled with esbuild into one ES module, plus a separate CSS file per theme: Aura, Lumo and the base styles). A new version goes into a new `vendor/vaadin-<version>/` folder and existing ones aren't touched.
+- `vendor/` is committed. `build-vendor.mjs` runs only when someone deliberately upgrades the Vaadin version (Vaadin web component packages from npm, bundled with esbuild into one ES module, plus a separate CSS file per theme: Aura, Lumo and the base styles). A new version goes into a new `vendor/vaadin-<version>/` folder and existing ones aren't touched (`--force` is needed to rebuild one; the build is reproducible).
+- What goes into a vendor folder (first version: **25.3.7**):
+  - `vaadin.js`: every free (Apache-2.0) component package that `@vaadin/vaadin-core` depends on, plus Lumo's `lumo:` iconset. `@vaadin/vaadin-core` itself isn't used, because it also pulls in `@vaadin/router` and the usage statistics.
+  - `aura.css` from `@vaadin/aura` (with `fonts/InstrumentSans.woff2` as a separate file), `lumo.css` from `@vaadin/vaadin-lumo-styles`, and the optional `lumo-utility.css`.
+  - `base.css`: there is no package or stylesheet for the base styles; since Vaadin 25 they are built into each component. `base.css` only gives the page a font and the base background/text colors (otherwise the page is serif and stays white in dark mode).
+  - `build-info.json` (versions, packages, sizes) and the licence texts.
+- `@vaadin/vaadin-usage-statistics` (imported by `@vaadin/component-base`) is replaced with a no-op at bundle time: on localhost it would POST to tools.vaadin.com, and prototypes make no external requests (§4.1). The build fails if any output references an external URL.
 - No build step for prototypes and no AI in CI.
 
 ### 7.1 Performance
@@ -165,6 +181,9 @@ When drawing: find the element again, then place the pin at `offset` inside its 
 - **Size budget:** `build-vendor.mjs` prints the minified and gzipped size of each output file. Leave out heavy optional packages (e.g. charts, the rich text editor) unless a prototype needs them. If needed, they go in a separate optional bundle loaded only by those prototypes.
 - **Caching:** GitHub Pages can't set custom cache headers (files are cached for about 10 minutes, then the browser checks whether they changed). Version folders never change, so those checks are cheap "not modified" answers.
 - **Switching prototypes** reloads the iframe, and the browser runs the cached bundle again. Target: switching between two prototypes on the same vendor version feels quick (under ~500 ms until the page is usable on a typical laptop, measured in M2).
+- **"Usable"** means: the frame's `load` event has fired, every custom element the page uses is defined (internal helper elements inside a component, such as `vaadin-grid-cell-content`, are ignored), fonts are loaded, and two frames have been painted. The viewer measures it from the click and exposes it as `window.__protoViewer.lastReadyMs`; `scripts/check-viewer.cjs` measures with Pages-like caching (`serve.mjs --pages`).
+- **M2 measurement** (Chromium in a cloud container, warm cache, 20 switches each): Aura↔Aura median 375 ms (p95 443), Aura↔Lumo median 360 ms (p95 412), cold first load 387 ms. With the CPU throttled 4×, the median is about 1.8 s. Network time is near zero when cached; about 170 ms is spent running the bundle (`vaadin.js`, 1225 KB minified / 310 KB gzipped), and the rest is the prototype's own rendering (a 42-row Grid in an App Layout is the slowest example).
+- **If switching gets too slow**, the next lever is the bundle's run time, not the network: split `vaadin.js` per component (still one vendor folder per version, still same-origin) so a prototype runs only what it imports.
 
 ### 7.2 Vendor version policy
 - Add a new `vendor/vaadin-<version>/` only when it's needed (a release with relevant changes), not for every Vaadin release.
@@ -186,7 +205,7 @@ It must tell the agent to:
 - Use `scripts/fetch-comments.mjs` when asked to work on feedback.
 - Follow the customer design system in `design-system/` (added per customer later; out of scope for v1).
 
-A theme-agnostic Vaadin prototyping skill (one that works with Aura, Lumo or the base styles) is being developed separately. It's meant to work alongside this repo and is the intended source of component-usage guidance. Until it's available, keep `CLAUDE.md` limited to the repo conventions above, and don't copy theme-specific guidance from the older Aura-only skill.
+A theme-agnostic Vaadin prototyping skill, `vaadin-html-prototype` (Aura, Lumo or the base styles), is available in the Claude workspace and is the intended source of component-usage guidance. `CLAUDE.md` points agents to its references for components and tokens, but not to its build script or its self-contained output: in this repo, pages load from `vendor/`. Keep `CLAUDE.md` limited to the repo conventions above, and don't copy theme-specific guidance from the older Aura-only skill.
 
 ## 9. Out of scope for v1
 Email/Slack notifications, @mentions, real-time live updates, private hosting, extracting the shared viewer package (phase 2), customer design-system content, Flow code generation.
@@ -200,6 +219,7 @@ Email/Slack notifications, @mentions, real-time live updates, private hosting, e
 
 ## 11. Open questions
 1. Is it acceptable that prototype HTML is publicly reachable by URL on GitHub Pages?
-2. Which exact Vaadin 25 version to pin first, and the npm package names for the Aura, Lumo and base-style CSS.
+2. ~~Which exact Vaadin 25 version to pin first, and the npm package names for the Aura, Lumo and base-style CSS.~~ Resolved in M1: 25.3.7; `@vaadin/aura`, `@vaadin/vaadin-lumo-styles`, and no package for the base styles (§7).
 3. Who owns the Supabase account and project (Vaadin org account, EU region)?
 4. Comment retention: keep threads forever, or purge them for archived prototypes?
+5. **Open in new tab** opens the prototype's own URL, which can't carry the light/dark choice, because prototypes don't read a theme from their URL (§4.1). Accept that, or let prototypes honour `?theme=dark` (a few lines of shared script in the vendor folder)?
