@@ -1,31 +1,19 @@
 # vaadin-prototypr
 
-A per-customer site for HTML prototypes of Vaadin UIs: real Vaadin 25 web
-components and a real Vaadin theme (Aura, Lumo or base styles), browsed in one
-viewer on GitHub Pages. See [SPEC.md](SPEC.md) for the specification and
-[CLAUDE.md](CLAUDE.md) for how prototypes are made.
+One website per customer that collects all their Vaadin HTML prototypes in one viewer.
 
-## Run locally
+## How it's used
 
-Needs Node 20+. No `npm install`: there are no dependencies.
+1. **Create the customer's repo** from this template and set the customer name and theme in `site.config.json`.
+2. **Enable GitHub Pages:** Settings → Pages → Source: **GitHub Actions**.
+3. **Make prototypes with Claude Code.** Ask for a prototype ("an order list with bulk actions, two variants"). The agent follows `CLAUDE.md`: it creates `prototypes/<slug>/` and checks the result in the viewer.
+4. **Merge to `main`.** The site deploys automatically.
+5. **Share the link.** Customers browse the prototypes and switch widths, light/dark and variants. **Copy link** shares the exact view.
+
+Try it locally (Node 20+, nothing to install):
 
 ```bash
 npm run serve
 ```
 
-Then open http://localhost:8080/. (`npm run serve` builds `manifest.json` and
-starts `scripts/serve.mjs`.)
-
-## Scripts
-
-| Script | What it does |
-|---|---|
-| `scripts/build-manifest.mjs` | Builds `manifest.json` from `prototypes/*/meta.json` and git history; validates meta and vendor references (`--strict` fails on errors, used in CI). |
-| `scripts/serve.mjs [port] [--pages]` | Static server with the same layout as GitHub Pages. `--pages` mimics Pages caching. |
-| `scripts/build-vendor.mjs [version]` | Bundles a Vaadin version from npm into `vendor/vaadin-<version>/` and prints file sizes. Run only when deliberately adding a version. |
-| `scripts/check-viewer.cjs` | Playwright end-to-end check of the viewer, including prototype-switch timing. |
-
-## Deploy
-
-`.github/workflows/pages.yml` deploys `main` to GitHub Pages. In the repository
-settings, set **Pages → Build and deployment → Source** to **GitHub Actions**.
+Then open http://localhost:8080/. The details are in [SPEC.md](SPEC.md).
