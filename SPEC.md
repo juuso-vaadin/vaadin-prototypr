@@ -5,7 +5,7 @@ Owner: Juuso Kantonen, Vaadin
 
 ## 1. Purpose
 
-A per-customer website that collects every HTML prototype made for that customer, lets anyone with the link browse them in one viewer, and lets them leave Figma-style pinned comments on top of the designs.
+A per-customer website that collects every HTML prototype made for that customer, lets anyone with the link browse them in one viewer, and lets the people who have the site's comment password leave Figma-style pinned comments on top of the designs.
 
 Prototypes are AI-built HTML stand-ins for Vaadin Flow UIs. They use the real Vaadin web components and a real Vaadin theme (Aura, Lumo or the base styles), and they get translated into Vaadin Flow (Java) code later. Flow components are Java wrappers around the same web components, so the handoff is mostly a direct mapping.
 
@@ -26,11 +26,11 @@ How this spec reads two of the paper's principles:
 | C5 | **Prototypes are long-lived.** The site grows over months. Earlier prototypes stay available, and prototypes can come from unrelated parts of the application. |
 | C6 | **Same tech stack, pinned.** All prototypes use Vaadin web components and a Vaadin theme, served from the repo (no CDN at runtime). Each prototype records which vendored version it uses, so later upgrades don't break older prototypes. |
 | C6b | **Theme-agnostic, one theme per site by convention.** The tooling supports Aura, Lumo and the base styles. A customer site normally uses one theme throughout (`site.config.json` → `defaultTheme`), and new prototypes use the same theme as earlier ones. Mixing themes between prototypes is technically possible but not expected. The viewer doesn't care which theme a prototype uses. |
-| C7 | **Comments are a must-have.** Anyone with the link can comment without a GitHub account. Comments are stored outside GitHub (Supabase). |
+| C7 | **Comments are a must-have, but optional per site and not public.** Commenting needs no GitHub account, but it does need signing in: phase 1 uses a per-site comment password plus a display name (§6.2); GitHub sign-in is the planned next option. Comments are stored outside GitHub (Supabase, behind a small backend interface). A site without a comment backend works fully as a viewer. |
 | C8 | **No Claude artifacts.** Prototypes aren't hosted or viewed through claude.ai. |
 | C9 | **Viewer code is kept separate** (`/viewer`), so it can later move into a shared package that all customer repos use (phase 2). |
 
-Known consequence: the prototype pages on GitHub Pages are public to anyone who has the URL (unless the org has GitHub Enterprise Cloud with private Pages). Comments are protected by a share token. The HTML isn't.
+Known consequence: the prototype pages on GitHub Pages are public to anyone who has the URL (unless the org has GitHub Enterprise Cloud with private Pages). Comments are protected by the comment password, checked by the database. The HTML isn't, so the password deliberately gates comments only, not viewing.
 
 ## 3. Repository layout
 
@@ -41,7 +41,7 @@ Known consequence: the prototype pages on GitHub Pages are public to anyone who 
 ├─ index.html                 starts the viewer (the only viewer file outside /viewer)
 ├─ docs/
 │  └─ background-ai-driven-html-prototyping.md   context: the discussion paper behind this project
-├─ site.config.json           customer name, Supabase URL + publishable key, default vendor version, defaultTheme
+├─ site.config.json           customer name, defaultTheme, default vendor version, comments (backend, project id, Supabase URL + publishable key)
 ├─ prototypes/
 │  └─ <slug>/
 │     ├─ index.html           the prototype (self-contained apart from /vendor)
@@ -56,9 +56,10 @@ Known consequence: the prototype pages on GitHub Pages are public to anyone who 
 │  ├─ serve.mjs               dependency-free local server with the deployed layout (--pages mimics Pages caching)
 │  ├─ check-viewer.cjs        Playwright end-to-end check of the viewer, incl. switch timing (§7.1)
 │  ├─ new-prototype.mjs       creates a new prototype folder from a starter file
-│  └─ fetch-comments.mjs      prints open comments for a prototype as markdown (for agents)
+│  ├─ check-comments.cjs      Playwright end-to-end check of comments (local backend + a mock Supabase)
+│  └─ fetch-comments.mjs      (deferred, see §6.5) prints open comments for agents
 ├─ supabase/
-│  └─ schema.sql              tables, access rules (RLS) and functions for comments
+│  └─ schema.sql              tables, access rules (RLS) and functions for comments (also shown in the setup guide)
 └─ .github/workflows/pages.yml  builds the manifest and deploys to GitHub Pages
 ```
 
@@ -104,7 +105,8 @@ The deployed site layout: `/` = viewer, `/prototypes/...`, `/vendor/...`, `/mani
 - **Theme**: a light/dark toggle.
 - **Variant and snapshot switchers** (when `meta.json` lists them).
 - **Open in new tab**, and **copy link**.
-- **Comment mode** toggle, plus a comments panel (§6).
+- **Comments** button in the header (with the open-thread count) that opens the comments panel; comment mode from the panel or the `C` key (§6). Hidden entirely when the site has no comments (`"backend": "none"`).
+- **Setup guide** at `#/setup`: how to connect comment storage, inside the app (§6.6).
 - **Deep links**: the URL hash holds all state, e.g. `#/p/<slug>?variant=b&snapshot=v1&w=390&theme=dark&thread=<id>`. Defaults are left out (first variant, current version, Full width, light). Opening that link restores the same view. Back/forward move between prototypes and variants; width and theme changes replace the history entry instead of adding one. Unknown parameters are kept as they are. Opening `/` without a hash shows the first non-archived prototype.
 - Works on a laptop screen first. Viewing on a phone is a nice-to-have.
 
@@ -127,45 +129,63 @@ The viewer and the prototypes are on the same domain, so the viewer can work dir
 
 ## 6. Comments
 
+Comments are optional. `site.config.json` → `comments` decides:
+- `"backend": "none"`: no comment UI at all; the viewer is just a viewer.
+- `"backend": "supabase"` with `project`, `supabase.url` and `supabase.publishableKey` set: shared comments for signed-in members.
+- `"backend": "supabase"` not filled in yet (the template's default): the Comments panel says comments aren't set up and links to the setup guide (§6.6). It also offers **Try comments in this browser**: the same UI with a local backend that saves only in that browser, clearly labelled, for demos and testing.
+
 ### 6.1 User experience (Figma-like)
-- Anyone with the customer link can view and comment.
-- The first time they comment, they're asked for a display name (an email is optional). It's remembered in the browser.
-- Comment mode: a crosshair cursor. Clicking anywhere in the prototype places a pin and opens a new comment thread.
-- Pins are numbered markers on top of the prototype. Clicking one opens its thread (replies, resolve, reopen).
-- The comments panel lists the threads for the current prototype: open first, resolved collapsed. Clicking a thread moves the view to its variant, width and theme and highlights the pin.
-- Each thread is badged **current**, **earlier version** (made on an older commit but its anchor still resolves) or **outdated** (its anchor no longer resolves). Outdated threads appear only in the panel and aren't drawn as pins.
-- **Copy as prompt**: copies all open threads of the current prototype as markdown, ready to paste into Claude Code. Each entry has the element, the comment text, the variant/width/theme, and the author.
+- Anyone with the site address can browse prototypes. To see or add comments, they **sign in once per browser** with the site's comment password and a display name (email optional). The name is shown with their comments; they can change it (for new comments) or sign out from the panel.
+- Comment mode: a crosshair cursor and an outline of the element (with its `data-proto-id`) under the pointer. Clicking places a draft pin and opens a small composer next to it; the click never reaches the prototype. `Esc` cancels.
+- Pins are numbered markers on top of the prototype, shown while the panel is open. Clicking one opens its thread (replies, edit/delete own comments, resolve, reopen). Resolved threads have no pin unless selected.
+- The comments panel lists the threads for the current prototype: open first, resolved collapsed. Clicking a thread moves the view to its variant, snapshot, width and theme and highlights the pin; the thread id goes into the deep link (`thread=`).
+- Each thread is badged **current**, **earlier version** (made on an older commit but its anchor still resolves) or **outdated** (its anchor no longer resolves). A thread whose element exists but isn't rendered right now (another tab, a closed dialog, another width) shows **not visible here**. Threads of another variant are listed with a chip and aren't pinned. Outdated threads appear only in the panel.
+- Feedback reaches an AI agent through a person, who reads the threads and writes the request; there is no "copy as prompt" (comments are rarely good prompts without someone's interpretation).
 
-### 6.2 Backend: Supabase
-- One Supabase project (EU region) serves all customer sites. The viewer talks to it directly with the publishable (anon) key, which sits in `site.config.json` and is safe to make public. Access rules (row-level security, RLS) do all the protecting.
-- Supabase **anonymous sign-in** gives each commenter an identity without an account. The display name is stored with each comment.
-- **Keeping customers apart:** each customer is a `project` row with a secret **share token**. The token is never committed. It travels in the link fragment as a parameter of the deep-link hash (`#/p/<slug>?t=<token>`, or `#/?t=<token>`), because the fragment also holds the view state (§5.1). After the first visit it is kept in browser storage and removed from the address bar, so **copy link** never copies the token by accident; sharing with a new person uses a separate "copy share link" that adds it. The viewer sends it on every request as a custom header (`x-share-token`). The access rules allow reading and writing only for rows whose project matches that token (store the token hashed and compare with `request.headers`). If there's no valid token, the viewer works read-only and shows no comments.
+### 6.2 Access: comment password and membership
+- One Supabase project (EU region) serves all customer sites. The viewer talks to it directly (plain `fetch`, no SDK) with the publishable key, which sits in `site.config.json` and is safe to make public. Access rules (row-level security, RLS) do all the protecting.
+- Every visitor gets a Supabase **anonymous identity** (no account). On its own it can read and write nothing.
+- Each customer is a `projects` row with its own **comment password**, stored only as a bcrypt hash. Signing in calls `join_project(slug, password, name, email)`, which checks the password in the database, rate-limits failures (5 per person and 50 per project in 15 minutes) and adds the visitor to `members` with their display name.
+- Every access rule asks one question: is this user a current member of the thread's project? Customers never see each other's comments. Author names and emails are copied from the membership by the database; the browser can't set them.
+- Changing a project's password (and bumping `password_version`) signs everyone out of that project.
+- The password is typed, never put in a URL. Admins share it separately from the site link.
+- Planned phase 2: **GitHub sign-in** as another way to become a member (Supabase's GitHub provider plus an allow-list of GitHub users per project). The membership model stays the same.
 
-### 6.3 Data model (sketch, final version in `supabase/schema.sql`)
+### 6.3 Data model (final version in `supabase/schema.sql`)
 ```
-projects (id uuid pk, slug text unique, name text, share_token_hash text, created_at)
+projects (id uuid pk, slug text unique, name text, password_hash text, password_version int, created_at)
+members  (project_id fk, user_id uuid, display_name text, email text null, password_version int, joined_at; pk (project_id, user_id))
+sign_in_attempts (project_id, user_id, succeeded, at)          -- for rate limiting
 threads  (id uuid pk, project_id fk, prototype_slug text, variant text null, snapshot text null,
           version_sha text, anchor jsonb, viewport jsonb, theme text,
           status text check in ('open','resolved'), created_by uuid, created_at, resolved_at, resolved_by)
-comments (id uuid pk, thread_id fk, author_id uuid, author_name text, body text, created_at, edited_at)
+comments (id uuid pk, thread_id fk, author_id uuid, author_name text, author_email text null, body text, created_at, edited_at)
 ```
-- `anchor`: `{ protoId, path, offset: {x, y}, fallback: {xPct, yPx} }` (§6.4)
-- `viewport`: `{ width, scrollY }`
-- Authors can edit or delete their own comments. Anyone with the token can resolve or reopen a thread.
+- `anchor`: `{ protoId | id | path, offset: {x, y}, fallback: {xPct, yPx}, label }` (§6.4)
+- `viewport`: `{ width (null = Full), frameWidth, scrollY }`
+- Functions: `join_project`, `my_membership`, `project_public` (name only), `set_my_name`, `leave_project`. Clients can't read `projects`, `members` or `sign_in_attempts` directly.
+- Members can edit or delete their own comments (only `body` is writable). Any member can resolve or reopen a thread (only `status` is writable); `resolved_at`/`resolved_by` are set by the database.
 
 ### 6.4 Pin placement and re-finding
 On click:
 1. Take the actual clicked node from the event path (`composedPath()[0]`), so clicks inside shadow DOM count.
-2. Walk up (crossing shadow roots via their host elements) to the nearest element with `data-proto-id`. If there isn't one, use the nearest element with an `id`. As a last resort, record a CSS path from the top of the document that steps through shadow roots.
-3. Store the click position as a fraction of that element's box (`offset`), plus a fallback position relative to the page.
+2. Walk up (crossing shadow roots via their host elements) to the nearest element with `data-proto-id`. If there isn't one, use the nearest element with a hand-written `id` (generated ids like `input-vaadin-text-field-12` are skipped). As a last resort, record a path of element indexes from the document that steps through shadow roots.
+3. Store the click position as a fraction of that element's box (`offset`), plus a fallback position relative to the page and a short human-readable `label`.
 
-When drawing: find the element again, then place the pin at `offset` inside its current box. Redraw on scroll, resize, width change and DOM changes (throttled). If the element can't be found, mark the thread **outdated**.
+When drawing: find the element again, then place the pin at `offset` inside its current box. Pins live in a layer in the viewer over the frame (not inside the prototype), mapped through the frame's scale. Redraw on scroll, resize, width change and DOM changes (throttled to one per frame). If the element can't be found, mark the thread **outdated**.
+
+Note: the prototype runs in another JavaScript realm (the iframe), so checks like `instanceof ShadowRoot` against the viewer's classes are always false; the viewer uses `nodeType` checks instead.
 
 ### 6.5 Feedback loop with Claude Code
-`scripts/fetch-comments.mjs <slug>` prints the open threads as markdown, in the same format as "Copy as prompt". It reads the Supabase URL from `site.config.json` and the share token from an environment variable. Claude Code on the web sessions must add the Supabase domain to the environment's allowed network domains. After Claude revises a prototype, the threads are resolved in the viewer by a person, not by the agent.
+A person reads the threads in the viewer and asks Claude Code for the changes, in their own words. After Claude revises a prototype, the threads are resolved in the viewer by a person, not by the agent. `scripts/fetch-comments.mjs` (an agent pulling threads itself) is deferred: it would need the comment password in the agent's environment and the Supabase domain in its network allow-list, and the same interpretation step still applies (open question 6).
+
+### 6.6 Setup guide (`#/setup`)
+The viewer contains its own setup instructions, so a site admin needs nothing else: how comments work, creating the Supabase project (EU region, anonymous sign-ins on, run `supabase/schema.sql`, shown with a copy button), adding the customer (generates a strong password and the SQL that stores only its bcrypt hash, plus the SQL to change it), connecting the site (the `site.config.json` snippet), a **connection check** that runs against the values typed on the page before anything is committed (reachability, schema, project id, password, read access), sharing, turning comments off, using another database, and troubleshooting.
+
+**Other databases:** the viewer reaches comment storage only through the interface in `viewer/comments/backends/index.js` (connect, sign in/out, rename, list threads, open counts, create thread, add/edit/delete comment, set status). Supabase and the local (this-browser) backend are the two implementations; another database is one more file plus `"backend": "<name>"`.
 
 ## 7. Build and deploy
-- `.github/workflows/pages.yml`: on push to `main`, check out with full history, run `build-manifest.mjs`, upload the site, and deploy with `actions/deploy-pages`.
+- `.github/workflows/pages.yml`: on push to `main`, check out with full history, run `build-manifest.mjs`, upload the site, and deploy with `actions/deploy-pages` The site includes `supabase/schema.sql`, so the setup guide can show it.
 - `vendor/` is committed. `build-vendor.mjs` runs only when someone deliberately upgrades the Vaadin version (Vaadin web component packages from npm, bundled with esbuild into one ES module, plus a separate CSS file per theme: Aura, Lumo and the base styles). A new version goes into a new `vendor/vaadin-<version>/` folder and existing ones aren't touched (`--force` is needed to rebuild one; the build is reproducible).
 - What goes into a vendor folder (first version: **25.3.7**):
   - `vaadin.js`: every free (Apache-2.0) component package that `@vaadin/vaadin-core` depends on, plus Lumo's `lumo:` iconset. `@vaadin/vaadin-core` itself isn't used, because it also pulls in `@vaadin/router` and the usage statistics.
@@ -202,7 +222,7 @@ It must tell the agent to:
 - Put design alternatives in variants, not in new prototypes.
 - Not edit other prototypes unless asked.
 - Check the work: serve the repo locally, open the prototype with Playwright at Phone and Desktop widths in light and dark, and look at the screenshots.
-- Use `scripts/fetch-comments.mjs` when asked to work on feedback.
+- Work on feedback as a person describes it; don't read or resolve comments yourself (§6.5).
 - Follow the customer design system in `design-system/` (added per customer later; out of scope for v1).
 
 A theme-agnostic Vaadin prototyping skill, `vaadin-html-prototype` (Aura, Lumo or the base styles), is available in the Claude workspace and is the intended source of component-usage guidance. `CLAUDE.md` points agents to its references for components and tokens, but not to its build script or its self-contained output: in this repo, pages load from `vendor/`. Keep `CLAUDE.md` limited to the repo conventions above, and don't copy theme-specific guidance from the older Aura-only skill.
@@ -213,9 +233,9 @@ Email/Slack notifications, @mentions, real-time live updates, private hosting, e
 ## 10. Milestones
 - **M1 – Skeleton.** Repo layout, `build-vendor.mjs` with a pinned Vaadin version and all three themes (Aura, Lumo, base), one example prototype with two variants, `build-manifest.mjs`, Pages workflow. *Done when:* the example prototype is visible on GitHub Pages with no external requests, and the vendor build reports its minified and gzipped bundle sizes.
 - **M2 – Viewer.** Everything in §5. *Done when:* you can switch between ≥3 prototypes, widths, themes and variants, and a copied deep link restores the exact view. Switching between prototypes on the same vendor version meets the target in §7.1 (measured with Playwright and reported).
-- **M3 – Comments.** `schema.sql`, anonymous sign-in, share token, pins, threads, resolve, panel, version badges. *Done when:* two browsers with the same link see each other's comments after a refresh, a link without the token can't read them, and pins stay on their element across width changes.
-- **M4 – Agent loop.** `CLAUDE.md`, `new-prototype.mjs`, `fetch-comments.mjs`, "Copy as prompt". *Done when:* a Claude Code session can create a prototype and act on its comments using only the repo instructions.
-- **M5 – Template.** README for creating a customer repo from the template (Pages setup, Supabase project row + token, config). *Done when:* a new customer site is running in under 15 minutes.
+- **M3 – Comments.** `schema.sql`, anonymous identities, comment password + membership, pins, threads, resolve, panel, version badges, the in-app setup guide, and a site that works without comments. *Done when:* two signed-in browsers see each other's comments after a refresh, a browser that hasn't signed in can't read them, and pins stay on their element across width changes.
+- **M4 – Agent loop.** `CLAUDE.md`, `new-prototype.mjs` (and possibly `fetch-comments.mjs`, see open question 6). *Done when:* a Claude Code session can create a prototype, and revise it from feedback a person passes on, using only the repo instructions.
+- **M5 – Template.** README for creating a customer repo from the template (Pages setup, Supabase project row + password, config). *Done when:* a new customer site is running in under 15 minutes.
 
 ## 11. Open questions
 1. Is it acceptable that prototype HTML is publicly reachable by URL on GitHub Pages?
@@ -223,3 +243,5 @@ Email/Slack notifications, @mentions, real-time live updates, private hosting, e
 3. Who owns the Supabase account and project (Vaadin org account, EU region)?
 4. Comment retention: keep threads forever, or purge them for archived prototypes?
 5. **Open in new tab** opens the prototype's own URL, which can't carry the light/dark choice, because prototypes don't read a theme from their URL (§4.1). Accept that, or let prototypes honour `?theme=dark` (a few lines of shared script in the vendor folder)?
+6. Should agents read comments directly (`fetch-comments.mjs` with the comment password), or does feedback always go through a person (current design, §6.5)?
+7. GitHub sign-in (phase 2): an allow-list of GitHub users per project, managed where (SQL, or a small admin page)?

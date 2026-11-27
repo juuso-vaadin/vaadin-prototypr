@@ -19,7 +19,8 @@ prototypes/<slug>/        one folder per prototype
   v<N>/index.html         optional frozen snapshots of earlier versions
 vendor/vaadin-<version>/  bundled Vaadin components + theme CSS (never edit)
 viewer/                   the viewer app (don't edit when working on prototypes)
-scripts/                  build-manifest, serve, build-vendor, check-viewer
+scripts/                  build-manifest, serve, build-vendor, check-viewer, check-comments
+supabase/schema.sql       comment storage: tables, access rules, functions
 ```
 
 ## Creating a prototype
@@ -158,11 +159,23 @@ before taking the screenshot. Also check the page has no console errors and no
 requests to other hosts. Click through the main path (buttons open their dialog,
 selections update the UI).
 
-If you changed the viewer, run `node scripts/check-viewer.cjs` (all checks must pass).
+If you changed the viewer, run `node scripts/check-viewer.cjs` and
+`node scripts/check-comments.cjs` (all checks must pass). If you changed
+`supabase/schema.sql`, keep it re-runnable and test it against Postgres.
+
+## Comments and feedback
+
+- Comments are optional per site (`site.config.json` → `comments`; `"backend": "none"`
+  turns them off). Setup is explained inside the viewer at `#/setup`.
+- Feedback reaches you through a person: work from what the user tells you. Don't
+  read, answer or resolve comments yourself, and never put the comment password in
+  the repository.
+- Pins attach to `data-proto-id`s, which is why existing ids must stay stable.
 
 ## Viewer code (for viewer work only)
 
 `viewer/` is plain HTML, CSS and ES modules with no dependencies and no build
 step, kept separate so it can become a shared package. Theme-specific behaviour
 lives only in `viewer/theme-adapters.js`; nothing else in the viewer may depend
-on which theme a prototype uses. Prototypes always run in an iframe.
+on which theme a prototype uses. Prototypes always run in an iframe. Comment
+storage is reached only through `viewer/comments/backends/` (one file per backend).
