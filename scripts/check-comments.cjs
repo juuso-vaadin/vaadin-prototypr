@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * check-comments.cjs: end-to-end check of comments (SPEC.md §6, M3) with Playwright.
+ * check-comments.cjs: end-to-end check of comments (docs/SPEC.md §6, M3) with Playwright.
  *
  *   node scripts/check-comments.cjs [screenshot-dir]
  *

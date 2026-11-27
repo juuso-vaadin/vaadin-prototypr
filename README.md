@@ -27,4 +27,4 @@ Try it locally (Node 20+, nothing to install):
 npm run serve
 ```
 
-Then open http://localhost:8080/. The details are in [SPEC.md](SPEC.md).
+Then open http://localhost:8080/. The specification is [docs/SPEC.md](docs/SPEC.md).

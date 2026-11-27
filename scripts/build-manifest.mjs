@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * build-manifest.mjs: writes manifest.json from prototypes/*\/meta.json + git history
- * (SPEC.md §4.3, §5.2). Runs in CI on every deploy and locally before serving.
+ * (docs/SPEC.md §4.3, §5.2). Runs in CI on every deploy and locally before serving.
  *
  *   node scripts/build-manifest.mjs [--out manifest.json] [--strict]
  *

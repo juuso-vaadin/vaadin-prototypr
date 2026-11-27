@@ -1,5 +1,5 @@
 /**
- * The comment layer over the prototype frame (SPEC.md §6.1, §6.4).
+ * The comment layer over the prototype frame (docs/SPEC.md §6.1, §6.4).
  *
  * Pins are drawn in the viewer, not inside the prototype, in a layer that sits
  * exactly over the frame and is clipped to it. Positions come in frame-viewport

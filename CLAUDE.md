@@ -2,7 +2,7 @@
 
 This repository is a **prototype site for one customer**: HTML prototypes of
 Vaadin Flow UIs, built from the real Vaadin web components and a real Vaadin
-theme, browsed in a viewer on GitHub Pages. `SPEC.md` is the specification.
+theme, browsed in a viewer on GitHub Pages. `docs/SPEC.md` is the specification.
 Read `docs/background-ai-driven-html-prototyping.md` once for context: what the
 prototypes are for, and why they must stay close to what Vaadin Flow renders.
 
@@ -21,13 +21,18 @@ vendor/vaadin-<version>/  bundled Vaadin components + theme CSS (never edit)
 viewer/                   the viewer app (don't edit when working on prototypes)
 scripts/                  build-manifest, serve, build-vendor, check-viewer, check-comments, init-site
 supabase/schema.sql       comment storage: tables, access rules, functions
+docs/                     SPEC.md, the background paper, new-customer-site.md
 ```
+
+A site that is still the template (`"template": true` in `site.config.json`) is
+turned into a customer site with `scripts/init-site.mjs` or the **Set up site**
+action (`docs/new-customer-site.md`). Don't run it unless asked.
 
 ## Creating a prototype
 
 1. Pick a slug: kebab-case, describes the design question, e.g.
    `order-list-bulk-actions`. **A slug never changes once it's on `main`**:
-   links (and, later, comments) refer to it.
+   links and comment threads refer to it.
 2. Create `prototypes/<slug>/index.html` and `prototypes/<slug>/meta.json`.
    (`scripts/new-prototype.mjs` will do this in a later milestone; until then,
    copy the skeleton below.)
@@ -104,7 +109,7 @@ supabase/schema.sql       comment storage: tables, access rules, functions
   `light-dark(...)` or the theme's `-light`/`-dark` property pairs.
 - **`data-proto-id` on meaningful elements**: sections, forms, grids, key
   buttons, dialogs, cards. Ids are kebab-case and unique within the page. When
-  editing, **keep existing ids stable** (feedback pins will attach to them).
+  editing, **keep existing ids stable**: comment pins attach to them.
 - **Variants, not new prototypes, for design alternatives.** The page reads
   `?variant=<id>` and renders that variant; list the variants in `meta.json`.
   Keep content and data identical across variants so they compare fairly.
@@ -133,9 +138,6 @@ supabase/schema.sql       comment storage: tables, access rules, functions
   `<script type="module">`, which runs after the components are defined.
 - Customer design system: follow `design-system/` if it exists (added per
   customer later).
-- A site that is still the template (`"template": true` in `site.config.json`) is set
-  up for a customer with `scripts/init-site.mjs` or the **Set up site** action; see
-  `docs/new-customer-site.md`. Don't run it unless asked.
 
 ## Checking your work
 
@@ -174,7 +176,6 @@ example prototypes, so they only run in the template repository. If you changed
 - Feedback reaches you through a person: work from what the user tells you. Don't
   read, answer or resolve comments yourself, and never put the comment password in
   the repository.
-- Pins attach to `data-proto-id`s, which is why existing ids must stay stable.
 
 ## Viewer code (for viewer work only)
 

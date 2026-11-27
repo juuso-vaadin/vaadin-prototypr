@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * build-vendor.mjs: bundles the Vaadin web components and the theme CSS from npm
- * into vendor/vaadin-<version>/ (SPEC.md §7, §7.1, §7.2).
+ * into vendor/vaadin-<version>/ (docs/SPEC.md §7, §7.1, §7.2).
  *
  *   node scripts/build-vendor.mjs [version] [--force]
  *

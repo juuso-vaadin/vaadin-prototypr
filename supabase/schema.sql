@@ -1,4 +1,4 @@
--- Prototype viewer comments: tables, access rules (RLS) and functions (SPEC.md §6).
+-- Prototype viewer comments: tables, access rules (RLS) and functions (docs/SPEC.md §6).
 --
 -- Run this in the Supabase SQL editor of the shared comments project. It is safe to
 -- run again: it creates what is missing and replaces functions, triggers and policies.

@@ -18,7 +18,7 @@
  *
  * What it does: removes the example prototypes, writes site.config.json, and replaces
  * README.md with a short one for the customer. Nothing else changes: the viewer, the
- * vendored Vaadin version, CLAUDE.md and SPEC.md stay as they are.
+ * vendored Vaadin version, CLAUDE.md and docs/SPEC.md stay as they are.
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -109,7 +109,7 @@ ${commentsOn
     : '- **Comments:** turned off (`site.config.json` → `comments.backend`: `"none"`).'}
 
 Theme: ${args.theme}. Vaadin: ${config.defaultVendor.replace('vaadin-', '')}. How this site was made from the
-template: [docs/new-customer-site.md](docs/new-customer-site.md). Specification: [SPEC.md](SPEC.md).
+template: [docs/new-customer-site.md](docs/new-customer-site.md). Specification: [docs/SPEC.md](docs/SPEC.md).
 `);
 
 console.log(`Set up the site for ${customer}.`);

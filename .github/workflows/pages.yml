@@ -1,4 +1,4 @@
-# Builds manifest.json and deploys the site to GitHub Pages (SPEC.md §7).
+# Builds manifest.json and deploys the site to GitHub Pages (docs/SPEC.md §7).
 # Repository settings: Pages → Build and deployment → Source: "GitHub Actions".
 name: Deploy to GitHub Pages
 

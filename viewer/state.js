@@ -1,5 +1,5 @@
 /**
- * View state <-> URL hash (SPEC.md §5.1 "Deep links").
+ * View state <-> URL hash (docs/SPEC.md §5.1 "Deep links").
  *
  *   #/p/<slug>?variant=b&snapshot=v1&w=390&theme=dark&thread=<id>
  *   #/setup                    the comments setup guide

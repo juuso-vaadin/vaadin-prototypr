@@ -1,5 +1,5 @@
 /**
- * Comments (SPEC.md §6): the panel, pins, comment mode and the composer.
+ * Comments (docs/SPEC.md §6): the panel, pins, comment mode and the composer.
  *
  * Comments are optional. Depending on site.config.json → comments.backend:
  *   "none"                  no comment UI at all
@@ -9,7 +9,7 @@
  *                           local backend (saved only in this browser)
  *
  * Viewing prototypes needs nothing. Seeing and adding comments needs signing in:
- * with Supabase, the site's comment password plus a display name (SPEC.md §6.2).
+ * with Supabase, the site's comment password plus a display name (docs/SPEC.md §6.2).
  */
 import { BACKENDS } from './backends/index.js';
 import { createOverlay } from './overlay.js';

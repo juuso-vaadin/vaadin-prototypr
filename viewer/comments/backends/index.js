@@ -1,5 +1,5 @@
 /**
- * Comment storage backends (SPEC.md §6).
+ * Comment storage backends (docs/SPEC.md §6).
  *
  * The viewer talks to comment storage only through this interface, so another
  * database can be added as one more file here. A backend is created with

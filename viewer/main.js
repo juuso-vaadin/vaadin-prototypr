@@ -1,5 +1,5 @@
 /**
- * Prototype viewer entry point (SPEC.md §5).
+ * Prototype viewer entry point (docs/SPEC.md §5).
  *
  *   import { startViewer } from './viewer/main.js';
  *   startViewer(document.querySelector('#app'), { manifestUrl: 'manifest.json', configUrl: 'site.config.json' });
