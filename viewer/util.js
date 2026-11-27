@@ -38,3 +38,41 @@ export const prefs = {
     }
   },
 };
+
+/** Storage that is scoped to this site (several sites can share one origin, e.g. GitHub Pages). */
+export const siteStorage = {
+  key: (name) => `proto-viewer:${location.pathname}:${name}`,
+  get(name, fallback = null) {
+    try {
+      const v = localStorage.getItem(this.key(name));
+      return v === null ? fallback : JSON.parse(v);
+    } catch {
+      return fallback;
+    }
+  },
+  set(name, value) {
+    try {
+      if (value === null || value === undefined) localStorage.removeItem(this.key(name));
+      else localStorage.setItem(this.key(name), JSON.stringify(value));
+    } catch {
+      /* ignore */
+    }
+  },
+};
+
+/** "just now", "5 min ago", "3 h ago", "2 days ago", then a date. */
+export function relativeTime(iso, now = Date.now()) {
+  const t = new Date(iso).getTime();
+  const s = Math.max(0, Math.round((now - t) / 1000));
+  if (s < 45) return 'just now';
+  if (s < 3600) return `${Math.round(s / 60)} min ago`;
+  if (s < 86400) return `${Math.round(s / 3600)} h ago`;
+  if (s < 7 * 86400) return `${Math.round(s / 86400)} day${Math.round(s / 86400) === 1 ? '' : 's'} ago`;
+  return new Date(iso).toISOString().slice(0, 10);
+}
+
+export function uuid() {
+  if (crypto.randomUUID) return crypto.randomUUID();
+  const h = [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}

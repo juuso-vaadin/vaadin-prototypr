@@ -30,8 +30,9 @@ jobs:
         run: node scripts/build-manifest.mjs --strict
       - name: Assemble site
         run: |
-          mkdir _site
+          mkdir -p _site/supabase
           cp -r index.html viewer prototypes vendor manifest.json site.config.json _site/
+          cp supabase/schema.sql _site/supabase/   # shown in the setup guide (#/setup)
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

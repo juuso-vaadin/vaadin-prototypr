@@ -2,16 +2,17 @@
  * View state <-> URL hash (SPEC.md §5.1 "Deep links").
  *
  *   #/p/<slug>?variant=b&snapshot=v1&w=390&theme=dark&thread=<id>
+ *   #/setup                    the comments setup guide
  *
  * The hash holds all view state, so copying the URL copies the view. Parameters
- * the viewer doesn't know are kept as they are (M3 adds thread and t).
+ * the viewer doesn't know are kept as they are (e.g. thread=, used by comments).
  */
 
 const KNOWN = ['variant', 'snapshot', 'w', 'theme'];
 export const MIN_WIDTH = 320;
 export const MAX_WIDTH = 2560;
 
-/** @typedef {{ slug: string|null, variant: string|null, snapshot: string|null, width: number|null, scheme: 'light'|'dark', extra: Record<string,string> }} ViewState */
+/** @typedef {{ page: 'prototype'|'setup', slug: string|null, variant: string|null, snapshot: string|null, width: number|null, scheme: 'light'|'dark', extra: Record<string,string> }} ViewState */
 
 /** @returns {ViewState} */
 export function parseHash(hash) {
@@ -23,6 +24,7 @@ export function parseHash(hash) {
   const extra = {};
   for (const [k, v] of params) if (!KNOWN.includes(k)) extra[k] = v;
   return {
+    page: /^\/setup\/?$/.test(path) ? 'setup' : 'prototype',
     slug: m ? decodeURIComponent(m[1]) : null,
     variant: params.get('variant') || null,
     snapshot: params.get('snapshot') || null,
@@ -34,6 +36,7 @@ export function parseHash(hash) {
 
 /** @param {ViewState} s */
 export function formatHash(s) {
+  if (s.page === 'setup') return '#/setup';
   if (!s.slug) return '';
   const params = new URLSearchParams();
   if (s.variant) params.set('variant', s.variant);

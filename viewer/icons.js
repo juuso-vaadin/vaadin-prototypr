@@ -15,4 +15,8 @@ export const icons = {
   chevron: svg('<path d="m7 10 5 5 5-5"/>').replace('width="18" height="18"', 'width="14" height="14"'),
   resize: svg('<path d="M8 7 3 12l5 5M16 7l5 5-5 5M3 12h18"/>'),
   full: svg('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>'),
+  comment: svg('<path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 4v-4h0A1.5 1.5 0 0 1 4 14.5Z"/>'),
+  plus: svg('<path d="M12 5v14M5 12h14"/>'),
+  close: svg('<path d="M6 6l12 12M18 6 6 18"/>'),
+  info: svg('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>').replace('width="18" height="18"', 'width="14" height="14"'),
 };

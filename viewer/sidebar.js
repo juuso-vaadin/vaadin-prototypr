@@ -23,6 +23,7 @@ export function createSidebar(host, { prototypes }) {
   const list = host.querySelector('.pv-list');
   const archivedToggle = host.querySelector('.pv-archived input');
   let lastState = null;
+  let counts = {};
 
   input.addEventListener('input', () => render(lastState));
   archivedToggle.addEventListener('change', () => render(lastState));
@@ -54,8 +55,8 @@ export function createSidebar(host, { prototypes }) {
             ${items
               .sort((a, b) => a.title.localeCompare(b.title))
               .map((p) => {
-                const href = formatHash({ ...state, slug: p.slug, variant: null, snapshot: null, extra: {} });
-                const current = p.slug === state.slug;
+                const href = formatHash({ ...state, page: 'prototype', slug: p.slug, variant: null, snapshot: null, extra: {} });
+                const current = state.page !== 'setup' && p.slug === state.slug;
                 const extras = [
                   p.variants?.length > 1 ? `${p.variants.length} variants` : '',
                   p.snapshots?.length ? `${p.snapshots.length} snapshot${p.snapshots.length > 1 ? 's' : ''}` : '',
@@ -68,6 +69,7 @@ export function createSidebar(host, { prototypes }) {
                       <span class="pv-item-meta">
                         <span class="pv-status" data-status="${escapeHtml(p.status)}">${STATUS_LABELS[p.status] ?? escapeHtml(p.status)}</span>
                         ${extras ? `<span>${extras}</span>` : ''}
+                        ${counts[p.slug] ? `<span class="pv-item-comments" title="${counts[p.slug]} open comment${counts[p.slug] === 1 ? '' : 's'}">${icons.comment}${counts[p.slug]}</span>` : ''}
                       </span>
                     </a>
                   </li>`;
@@ -78,5 +80,13 @@ export function createSidebar(host, { prototypes }) {
       .join('');
   }
 
-  return { render, focusSearch: () => input.focus() };
+  return {
+    render,
+    focusSearch: () => input.focus(),
+    /** Open comment threads per prototype slug (§5.1); {} when comments are off. */
+    setCounts(c) {
+      counts = c ?? {};
+      if (lastState) render(lastState);
+    },
+  };
 }

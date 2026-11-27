@@ -8,6 +8,6 @@
     "manifest": "node scripts/build-manifest.mjs",
     "serve": "node scripts/build-manifest.mjs && node scripts/serve.mjs",
     "build-vendor": "node scripts/build-vendor.mjs",
-    "check": "node scripts/check-viewer.cjs"
+    "check": "node scripts/check-viewer.cjs && node scripts/check-comments.cjs"
   }
 }

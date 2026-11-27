@@ -16,7 +16,7 @@ import { clampWidth } from './state.js';
 const GUTTER_X = 20; // room for the drag handles
 const GUTTER_Y = 16;
 
-export function createStage(host, { onWidthChange, onReady } = {}) {
+export function createStage(host, { onWidthChange, onReady, onUnload } = {}) {
   host.classList.add('pv-stage');
   host.innerHTML = `
     <div class="pv-progress" hidden></div>
@@ -69,6 +69,7 @@ export function createStage(host, { onWidthChange, onReady } = {}) {
   function attach(doc) {
     if (watchedDoc === doc) return;
     watchedDoc = doc;
+    onUnload?.();
     applyScheme(doc);
     doc.addEventListener('DOMContentLoaded', () => applyScheme(doc), { once: true });
   }
@@ -81,6 +82,8 @@ export function createStage(host, { onWidthChange, onReady } = {}) {
     // The prototype may reload itself; style the next document early as well.
     const win = iframe.contentWindow;
     win.addEventListener('pagehide', () => {
+      host.dataset.ready = 'false';
+      onUnload?.();
       loadToken++;
       loadStart = performance.now();
       progress.hidden = false;
@@ -117,10 +120,12 @@ export function createStage(host, { onWidthChange, onReady } = {}) {
     device.style.width = `${w}px`;
     device.style.height = `${h}px`;
     device.style.transform = scale < 1 ? `scale(${scale})` : '';
-    device.style.left = `${Math.round((canvas.clientWidth - w * scale) / 2)}px`;
+    const left = Math.round((canvas.clientWidth - w * scale) / 2);
+    device.style.left = `${left}px`;
     device.style.top = `${GUTTER_Y}px`;
     host.classList.toggle('pv-full', !width);
-    layoutInfo = { width: Math.round(w), height: h, scale };
+    // left/top/scale map frame coordinates to canvas coordinates (used by comment pins).
+    layoutInfo = { width: Math.round(w), height: h, scale, left, top: GUTTER_Y };
     host.dispatchEvent(new CustomEvent('stage-layout', { detail: layoutInfo }));
   }
   new ResizeObserver(layout).observe(canvas);
@@ -155,6 +160,12 @@ export function createStage(host, { onWidthChange, onReady } = {}) {
 
   return {
     iframe,
+    canvas,
+    /** The prototype's document once it's ready, else null. */
+    get doc() {
+      const d = safeDoc();
+      return host.dataset.ready === 'true' && d && d.URL !== 'about:blank' ? d : null;
+    },
     /** Loads a prototype URL. Same URL: only the scheme is re-applied (no reload). */
     show({ url, theme, scheme }) {
       message.hidden = true;
@@ -168,6 +179,7 @@ export function createStage(host, { onWidthChange, onReady } = {}) {
       loadToken++;
       loadStart = performance.now();
       host.dataset.ready = 'false';
+      onUnload?.();
       progress.hidden = false;
       const previousDoc = safeDoc();
       iframe.src = url;
@@ -183,6 +195,8 @@ export function createStage(host, { onWidthChange, onReady } = {}) {
       current.url = null;
       iframe.removeAttribute('src');
       device.hidden = true;
+      host.dataset.ready = 'false';
+      onUnload?.();
       progress.hidden = true;
       message.innerHTML = html;
       message.hidden = false;

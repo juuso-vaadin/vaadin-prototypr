@@ -37,6 +37,7 @@ export function createTopBar(host, { onChange, onToggleSidebar }) {
       <div data-role="size"></div>
       <button type="button" class="pv-icon-button" data-action="scheme" aria-pressed="false"></button>
       <a class="pv-icon-button" data-action="open" target="_blank" rel="noopener" aria-label="Open prototype in a new tab" title="Open prototype in a new tab">${icons.external}</a>
+      <span data-role="comments" hidden></span>
       <button type="button" class="pv-button" data-action="copy" title="Copy a link to this exact view">${icons.link}<span>Copy link</span></button>
     </div>`;
   const $ = (s) => host.querySelector(s);
@@ -74,7 +75,8 @@ export function createTopBar(host, { onChange, onToggleSidebar }) {
     render(s, view) {
       state = s;
       const { proto } = view;
-      $('.pv-title').textContent = proto ? proto.title : 'Prototypes';
+      host.classList.toggle('pv-topbar-setup', !!view.setup);
+      $('.pv-title').textContent = view.setup ? 'Set up comments' : proto ? proto.title : 'Prototypes';
       $('.pv-meta').innerHTML = proto
         ? [
             escapeHtml(proto.area),

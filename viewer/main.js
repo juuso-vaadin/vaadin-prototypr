@@ -2,7 +2,7 @@
  * Prototype viewer entry point (SPEC.md §5).
  *
  *   import { startViewer } from './viewer/main.js';
- *   startViewer(document.querySelector('#app'), { manifestUrl: 'manifest.json' });
+ *   startViewer(document.querySelector('#app'), { manifestUrl: 'manifest.json', configUrl: 'site.config.json' });
  *
  * The viewer is plain ES modules with no dependencies and no knowledge of the
  * repository around it beyond the manifest, so it can later move into a shared
@@ -13,25 +13,33 @@ import { createStore } from './state.js';
 import { createStage } from './stage.js';
 import { createSidebar } from './sidebar.js';
 import { createSizeMenu, createTopBar } from './toolbar.js';
+import { createComments } from './comments/index.js';
+import { createSetupPage } from './setup.js';
 import { escapeHtml, prefs } from './util.js';
 
-export async function startViewer(root, { manifestUrl = 'manifest.json' } = {}) {
+export async function startViewer(root, { manifestUrl = 'manifest.json', configUrl = 'site.config.json' } = {}) {
   root.classList.add('pv-app');
   root.innerHTML = `
     <aside class="pv-side"></aside>
     <div class="pv-main">
       <header></header>
       <main class="pv-stage-host"></main>
+      <div class="pv-setup-host" hidden></div>
     </div>
     <div class="pv-scrim" hidden></div>`;
   const side = root.querySelector('.pv-side');
   const scrim = root.querySelector('.pv-scrim');
 
   let manifest;
+  let siteConfig = {};
   try {
-    const res = await fetch(manifestUrl, { cache: 'no-cache' });
+    const [res, conf] = await Promise.all([
+      fetch(manifestUrl, { cache: 'no-cache' }),
+      fetch(configUrl, { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
+    ]);
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
     manifest = await res.json();
+    siteConfig = conf;
   } catch (e) {
     root.querySelector('.pv-stage-host').innerHTML = `<div class="pv-message">Could not load <code>${escapeHtml(manifestUrl)}</code> (${escapeHtml(e.message)}).<br>Run <code>node scripts/build-manifest.mjs</code> first.</div>`;
     return;
@@ -67,7 +75,9 @@ export async function startViewer(root, { manifestUrl = 'manifest.json' } = {}) 
     onChange: (width) => store.set({ width }, { replace: true }),
   });
   const stageHost = root.querySelector('.pv-stage-host');
+  let comments = null;
   const stage = createStage(stageHost, {
+    onUnload: () => comments?.documentGone(),
     onWidthChange: (width, { final }) => {
       sizeMenu.setWidth(width);
       if (final) store.set({ width }, { replace: true });
@@ -76,9 +86,23 @@ export async function startViewer(root, { manifestUrl = 'manifest.json' } = {}) 
       // Exposed for tests and for anyone curious about switch timing (§7.1).
       window.__protoViewer = { ...(window.__protoViewer ?? {}), lastReadyMs: ms, lastReadyUrl: url, readyCount: (window.__protoViewer?.readyCount ?? 0) + 1 };
       root.dispatchEvent(new CustomEvent('prototype-ready', { detail: { ms, url }, bubbles: true }));
+      comments?.documentReady();
     },
   });
-  stageHost.addEventListener('stage-layout', (e) => sizeMenu.setLayout(e.detail));
+  comments = createComments({
+    app: root,
+    header: root.querySelector('header'),
+    stage,
+    store,
+    siteConfig,
+    onCounts: (counts) => sidebar.setCounts(counts),
+  });
+  stageHost.addEventListener('stage-layout', (e) => {
+    sizeMenu.setLayout(e.detail);
+    comments.layout(e.detail);
+  });
+  const setupHost = root.querySelector('.pv-setup-host');
+  let setupPage = null;
 
   // Keyboard: "/" focuses search (when not typing somewhere).
   document.addEventListener('keydown', (e) => {
@@ -103,6 +127,18 @@ export async function startViewer(root, { manifestUrl = 'manifest.json' } = {}) 
   }
 
   function render(state) {
+    const onSetup = state.page === 'setup';
+    stageHost.hidden = onSetup;
+    setupHost.hidden = !onSetup;
+    root.classList.toggle('pv-on-setup', onSetup);
+    if (onSetup) {
+      setupPage ??= createSetupPage(setupHost, { siteConfig });
+      sidebar.render(state);
+      topBar.render(state, { proto: null, setup: true });
+      comments.view(state, { proto: null });
+      document.title = `Set up comments · ${manifest.customer || 'Prototypes'}`;
+      return;
+    }
     // No prototype in the URL: open the first one that isn't archived.
     if (!state.slug) {
       const first = [...prototypes].sort((a, b) => (a.area ?? '').localeCompare(b.area ?? '') || a.title.localeCompare(b.title))
@@ -116,6 +152,7 @@ export async function startViewer(root, { manifestUrl = 'manifest.json' } = {}) 
     }
     sidebar.render(state);
     topBar.render(state, view);
+    comments.view(state, view);
     sizeMenu.setWidth(state.width);
     stage.setWidth(state.width);
     document.title = view.proto ? `${view.proto.title} · ${manifest.customer || 'Prototypes'}` : `${manifest.customer || 'Prototypes'}`;
