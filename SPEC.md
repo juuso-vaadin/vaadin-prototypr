@@ -21,7 +21,7 @@ How this spec reads two of the paper's principles:
 |---|----------|
 | C1 | **No Anthropic API usage.** Prototypes are created with Claude Code on the web (or locally) on a Claude subscription. Nothing in this project calls an LLM API, including the CI. |
 | C2 | **Hosting is GitHub Pages**, deployed by GitHub Actions from `main`. |
-| C3 | **One repository per customer.** It's created from this repository, which is a GitHub template repository. |
+| C3 | **One repository per customer.** It's created from this repository, which is a GitHub template repository, and set up with the **Set up site** action (§7.3). |
 | C4 | **No branch-based workflow.** All prototypes live on `main`. Design alternatives live *inside* a prototype (variants). Branches made by Claude Code sessions are just a way to get work merged. |
 | C5 | **Prototypes are long-lived.** The site grows over months. Earlier prototypes stay available, and prototypes can come from unrelated parts of the application. |
 | C6 | **Same tech stack, pinned.** All prototypes use Vaadin web components and a Vaadin theme, served from the repo (no CDN at runtime). Each prototype records which vendored version it uses, so later upgrades don't break older prototypes. |
@@ -40,8 +40,9 @@ Known consequence: the prototype pages on GitHub Pages are public to anyone who 
 ├─ CLAUDE.md                  rules for agents creating prototypes (see §8)
 ├─ index.html                 starts the viewer (the only viewer file outside /viewer)
 ├─ docs/
-│  └─ background-ai-driven-html-prototyping.md   context: the discussion paper behind this project
-├─ site.config.json           customer name, defaultTheme, default vendor version, comments (backend, project id, Supabase URL + publishable key)
+│  ├─ background-ai-driven-html-prototyping.md   context: the discussion paper behind this project
+│  └─ new-customer-site.md    how to make a customer site from the template (§7.3)
+├─ site.config.json           customer name, defaultTheme, default vendor version, comments (backend, project id, Supabase URL + publishable key); "template": true only in the template
 ├─ prototypes/
 │  └─ <slug>/
 │     ├─ index.html           the prototype (self-contained apart from /vendor)
@@ -55,12 +56,14 @@ Known consequence: the prototype pages on GitHub Pages are public to anyone who 
 │  ├─ build-manifest.mjs      creates manifest.json from prototypes/*/meta.json + git history, and validates them
 │  ├─ serve.mjs               dependency-free local server with the deployed layout (--pages mimics Pages caching)
 │  ├─ check-viewer.cjs        Playwright end-to-end check of the viewer, incl. switch timing (§7.1)
-│  ├─ new-prototype.mjs       creates a new prototype folder from a starter file
-│  ├─ check-comments.cjs      Playwright end-to-end check of comments (local backend + a mock Supabase)
-│  └─ fetch-comments.mjs      (deferred, see §6.5) prints open comments for agents
+│  ├─ new-prototype.mjs       (M4) creates a new prototype folder from a starter file
+│  ├─ init-site.mjs           turns a fresh copy of the template into one customer's site (§7.3)
+│  └─ check-comments.cjs      Playwright end-to-end check of comments (local backend + a mock Supabase)
 ├─ supabase/
 │  └─ schema.sql              tables, access rules (RLS) and functions for comments (also shown in the setup guide)
-└─ .github/workflows/pages.yml  builds the manifest and deploys to GitHub Pages
+└─ .github/workflows/
+   ├─ pages.yml               builds the manifest and deploys to GitHub Pages
+   └─ setup-site.yml          "Set up site": runs init-site.mjs from the browser, then deploys (§7.3)
 ```
 
 The deployed site layout: `/` = viewer, `/prototypes/...`, `/vendor/...`, `/manifest.json`. Everything is served from the same domain. The viewer relies on this (§5.3). All paths are relative, so the site also works under a project-pages subpath (`https://<org>.github.io/<repo>/`).
@@ -177,7 +180,7 @@ When drawing: find the element again, then place the pin at `offset` inside its 
 Note: the prototype runs in another JavaScript realm (the iframe), so checks like `instanceof ShadowRoot` against the viewer's classes are always false; the viewer uses `nodeType` checks instead.
 
 ### 6.5 Feedback loop with Claude Code
-A person reads the threads in the viewer and asks Claude Code for the changes, in their own words. After Claude revises a prototype, the threads are resolved in the viewer by a person, not by the agent. `scripts/fetch-comments.mjs` (an agent pulling threads itself) is deferred: it would need the comment password in the agent's environment and the Supabase domain in its network allow-list, and the same interpretation step still applies (open question 6).
+A person reads the threads in the viewer and asks Claude Code for the changes, in their own words. After Claude revises a prototype, the threads are resolved in the viewer by a person, not by the agent. Agents don't read comments themselves: comments are rarely good instructions without someone's interpretation, and it would put the comment password into the agent's environment. (An earlier draft had a `fetch-comments.mjs` script for this; it was dropped.)
 
 ### 6.6 Setup guide (`#/setup`)
 The viewer contains its own setup instructions, so a site admin needs nothing else: how comments work, creating the Supabase project (EU region, anonymous sign-ins on, run `supabase/schema.sql`, shown with a copy button), adding the customer (generates a strong password and the SQL that stores only its bcrypt hash, plus the SQL to change it), connecting the site (the `site.config.json` snippet), a **connection check** that runs against the values typed on the page before anything is committed (reachability, schema, project id, password, read access), sharing, turning comments off, using another database, and troubleshooting.
@@ -212,6 +215,18 @@ The viewer contains its own setup instructions, so a site admin needs nothing el
 - Remove a vendor folder once no prototype or snapshot uses it. `build-manifest.mjs` warns about unused vendor folders.
 - Different versions never load into the same document, because each prototype runs in its own iframe. This is why the viewer must always keep prototypes in an iframe.
 
+### 7.3 New customer sites (template)
+Step by step in `docs/new-customer-site.md`; about 10 minutes per customer, all in the browser:
+1. **Use this template** → new repository (private or public; the site is public either way, §2).
+2. Settings → Pages → Source: **GitHub Actions**.
+3. Actions → **Set up site** (`setup-site.yml`), with the customer name, theme, comments on/off and an optional comment project id. It runs `scripts/init-site.mjs`, which removes the example prototypes, writes `site.config.json` (without the `"template": true` marker) and a short customer README, then commits and starts the deployment (a push made with the workflow token doesn't trigger other workflows, so it dispatches `pages.yml` itself). It runs once, and never in the template repository (`github.event.repository.is_template`).
+4. If comments are on: the new site's `#/setup`, step 2: generate the comment password and run the SQL; step 3: **Check connection**.
+5. Share the site address, and the password separately.
+
+Once per organisation: tick *Template repository* on this repository, and put the shared Supabase URL and publishable key into the template's `site.config.json`, so new sites inherit them and only need a project id and password.
+
+The Playwright checks (`check-viewer.cjs`, `check-comments.cjs`) use the example prototypes, so they run in the template repository, where the viewer is developed; in a customer site they exit with a note.
+
 ## 8. Agent instructions (`CLAUDE.md` in each customer repo)
 It must tell the agent to:
 - Create new prototypes with `scripts/new-prototype.mjs` (or follow the same layout), fill in `meta.json`, and never rename a slug.
@@ -234,8 +249,8 @@ Email/Slack notifications, @mentions, real-time live updates, private hosting, e
 - **M1 – Skeleton.** Repo layout, `build-vendor.mjs` with a pinned Vaadin version and all three themes (Aura, Lumo, base), one example prototype with two variants, `build-manifest.mjs`, Pages workflow. *Done when:* the example prototype is visible on GitHub Pages with no external requests, and the vendor build reports its minified and gzipped bundle sizes.
 - **M2 – Viewer.** Everything in §5. *Done when:* you can switch between ≥3 prototypes, widths, themes and variants, and a copied deep link restores the exact view. Switching between prototypes on the same vendor version meets the target in §7.1 (measured with Playwright and reported).
 - **M3 – Comments.** `schema.sql`, anonymous identities, comment password + membership, pins, threads, resolve, panel, version badges, the in-app setup guide, and a site that works without comments. *Done when:* two signed-in browsers see each other's comments after a refresh, a browser that hasn't signed in can't read them, and pins stay on their element across width changes.
-- **M4 – Agent loop.** `CLAUDE.md`, `new-prototype.mjs` (and possibly `fetch-comments.mjs`, see open question 6). *Done when:* a Claude Code session can create a prototype, and revise it from feedback a person passes on, using only the repo instructions.
-- **M5 – Template.** README for creating a customer repo from the template (Pages setup, Supabase project row + password, config). *Done when:* a new customer site is running in under 15 minutes.
+- **M4 – Agent loop.** `CLAUDE.md`, `new-prototype.mjs`. *Done when:* a Claude Code session can create a prototype, and revise it from feedback a person passes on, using only the repo instructions.
+- **M5 – Template.** `docs/new-customer-site.md`, `init-site.mjs`, the **Set up site** action, an empty-site state in the viewer (§7.3). *Done when:* a new customer site is running in under 15 minutes.
 
 ## 11. Open questions
 1. Is it acceptable that prototype HTML is publicly reachable by URL on GitHub Pages?
@@ -243,5 +258,4 @@ Email/Slack notifications, @mentions, real-time live updates, private hosting, e
 3. Who owns the Supabase account and project (Vaadin org account, EU region)?
 4. Comment retention: keep threads forever, or purge them for archived prototypes?
 5. **Open in new tab** opens the prototype's own URL, which can't carry the light/dark choice, because prototypes don't read a theme from their URL (§4.1). Accept that, or let prototypes honour `?theme=dark` (a few lines of shared script in the vendor folder)?
-6. Should agents read comments directly (`fetch-comments.mjs` with the comment password), or does feedback always go through a person (current design, §6.5)?
-7. GitHub sign-in (phase 2): an allow-list of GitHub users per project, managed where (SQL, or a small admin page)?
+6. GitHub sign-in (phase 2): an allow-list of GitHub users per project, managed where (SQL, or a small admin page)?

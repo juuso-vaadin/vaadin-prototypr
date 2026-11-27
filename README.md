@@ -1,15 +1,25 @@
 # vaadin-prototypr
 
-One website per customer that collects all their Vaadin HTML prototypes in one viewer.
+The template for per-customer prototype sites: Vaadin HTML prototypes, built with
+Claude Code from the real Vaadin web components and theme, browsed in one viewer on
+GitHub Pages, with optional password-protected comments.
 
 ## How it's used
 
-1. **Create the customer's repo** from this template and set the customer name and theme in `site.config.json`.
-2. **Enable GitHub Pages:** Settings → Pages → Source: **GitHub Actions**.
-3. **Make prototypes with Claude Code.** Ask for a prototype ("an order list with bulk actions, two variants"). The agent follows `CLAUDE.md`: it creates `prototypes/<slug>/` and checks the result in the viewer.
-4. **Merge to `main`.** The site deploys automatically.
-5. **Share the link.** Customers browse the prototypes and switch widths, light/dark and variants. **Copy link** shares the exact view.
-6. **Comments (optional).** Open `#/setup` on the site and follow the steps: it connects a Supabase database and creates the site's comment password. People sign in with that password and their name to pin comments on prototypes. Without it, the site is a plain viewer; set `"backend": "none"` to hide comments entirely.
+1. **Create a customer site** from this template: about 10 minutes, all in the browser.
+   Follow [docs/new-customer-site.md](docs/new-customer-site.md) (Use this template →
+   turn on Pages → run the **Set up site** action → comment password).
+2. **Make prototypes with Claude Code** in the customer's repository. Describe the
+   screen ("an order list with bulk actions, two variants"). The agent follows
+   [CLAUDE.md](CLAUDE.md), creates `prototypes/<slug>/` and checks the result in the viewer.
+3. **Merge to `main`.** The site deploys automatically.
+4. **Share the link** with the customer. They switch widths, light/dark and variants,
+   and **Copy link** shares the exact view.
+5. **Comments (optional).** People sign in with the site's comment password and their
+   name, then pin comments on prototypes. Setup is explained inside the site at
+   `#/setup`.
+
+This repository's own site shows three example prototypes. A customer site starts empty.
 
 Try it locally (Node 20+, nothing to install):
 

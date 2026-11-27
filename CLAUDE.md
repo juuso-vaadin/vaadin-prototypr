@@ -19,7 +19,7 @@ prototypes/<slug>/        one folder per prototype
   v<N>/index.html         optional frozen snapshots of earlier versions
 vendor/vaadin-<version>/  bundled Vaadin components + theme CSS (never edit)
 viewer/                   the viewer app (don't edit when working on prototypes)
-scripts/                  build-manifest, serve, build-vendor, check-viewer, check-comments
+scripts/                  build-manifest, serve, build-vendor, check-viewer, check-comments, init-site
 supabase/schema.sql       comment storage: tables, access rules, functions
 ```
 
@@ -133,6 +133,9 @@ supabase/schema.sql       comment storage: tables, access rules, functions
   `<script type="module">`, which runs after the components are defined.
 - Customer design system: follow `design-system/` if it exists (added per
   customer later).
+- A site that is still the template (`"template": true` in `site.config.json`) is set
+  up for a customer with `scripts/init-site.mjs` or the **Set up site** action; see
+  `docs/new-customer-site.md`. Don't run it unless asked.
 
 ## Checking your work
 
@@ -160,7 +163,8 @@ requests to other hosts. Click through the main path (buttons open their dialog,
 selections update the UI).
 
 If you changed the viewer, run `node scripts/check-viewer.cjs` and
-`node scripts/check-comments.cjs` (all checks must pass). If you changed
+`node scripts/check-comments.cjs` (all checks must pass). They use the template's
+example prototypes, so they only run in the template repository. If you changed
 `supabase/schema.sql`, keep it re-runnable and test it against Postgres.
 
 ## Comments and feedback
