@@ -12,7 +12,7 @@
 import { createStore } from './state.js';
 import { createStage } from './stage.js';
 import { createSidebar } from './sidebar.js';
-import { createTopBar, createWidthBar } from './toolbar.js';
+import { createSizeMenu, createTopBar } from './toolbar.js';
 import { escapeHtml, prefs } from './util.js';
 
 export async function startViewer(root, { manifestUrl = 'manifest.json' } = {}) {
@@ -21,7 +21,6 @@ export async function startViewer(root, { manifestUrl = 'manifest.json' } = {}) 
     <aside class="pv-side"></aside>
     <div class="pv-main">
       <header></header>
-      <div class="pv-widthbar-host"></div>
       <main class="pv-stage-host"></main>
     </div>
     <div class="pv-scrim" hidden></div>`;
@@ -64,13 +63,13 @@ export async function startViewer(root, { manifestUrl = 'manifest.json' } = {}) 
     onChange: (patch, opts) => store.set(patch, opts),
     onToggleSidebar: () => toggleSidebar(),
   });
-  const widthBar = createWidthBar(root.querySelector('.pv-widthbar-host'), {
+  const sizeMenu = createSizeMenu(root.querySelector('header [data-role=size]'), {
     onChange: (width) => store.set({ width }, { replace: true }),
   });
   const stageHost = root.querySelector('.pv-stage-host');
   const stage = createStage(stageHost, {
     onWidthChange: (width, { final }) => {
-      widthBar.setWidth(width);
+      sizeMenu.setWidth(width);
       if (final) store.set({ width }, { replace: true });
     },
     onReady: ({ ms, url }) => {
@@ -79,7 +78,7 @@ export async function startViewer(root, { manifestUrl = 'manifest.json' } = {}) 
       root.dispatchEvent(new CustomEvent('prototype-ready', { detail: { ms, url }, bubbles: true }));
     },
   });
-  stageHost.addEventListener('stage-layout', (e) => widthBar.setLayout(e.detail));
+  stageHost.addEventListener('stage-layout', (e) => sizeMenu.setLayout(e.detail));
 
   // Keyboard: "/" focuses search (when not typing somewhere).
   document.addEventListener('keydown', (e) => {
@@ -117,7 +116,7 @@ export async function startViewer(root, { manifestUrl = 'manifest.json' } = {}) 
     }
     sidebar.render(state);
     topBar.render(state, view);
-    widthBar.setWidth(state.width);
+    sizeMenu.setWidth(state.width);
     stage.setWidth(state.width);
     document.title = view.proto ? `${view.proto.title} · ${manifest.customer || 'Prototypes'}` : `${manifest.customer || 'Prototypes'}`;
     if (!view.proto) {

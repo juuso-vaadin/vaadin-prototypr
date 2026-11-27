@@ -100,7 +100,7 @@ The deployed site layout: `/` = viewer, `/prototypes/...`, `/vendor/...`, `/mani
 ### 5.1 Features (v1)
 - **Prototype list**: a sidebar grouped by `area`, with search (title, area, description), a status badge, and a count of open comments. Archived prototypes are hidden by default (a deep link to an archived prototype still opens it and shows it in the list).
 - **Stage**: the selected prototype is shown in an iframe.
-- **Screen widths**: presets for Phone 390, Tablet 768, Laptop 1280, Desktop 1440 and Full. A custom width can be dragged (handles on both edges, the frame stays centred) or typed. The current width and height are shown. When a width doesn't fit the stage, the frame is scaled down to fit and the scale is shown; the prototype still sees the full width.
+- **Screen widths**: a compact dropdown in the header. The default is **Full** (the frame fills the stage). **Phone 390** and **Tablet 768** are offered in addition: the viewer is used on desktop, so wider sizes are checked by resizing the browser window. A custom width can still be dragged with handles on both edges of the frame (the frame stays centred); it then shows as a checked "Custom <n> px" entry. The button shows the current size. When a width doesn't fit the stage (e.g. a deep link with `w=1600`), the frame is scaled down to fit and the scale is shown; the prototype still sees the full width.
 - **Theme**: a light/dark toggle.
 - **Variant and snapshot switchers** (when `meta.json` lists them).
 - **Open in new tab**, and **copy link**.

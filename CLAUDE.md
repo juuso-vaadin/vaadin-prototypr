@@ -143,12 +143,13 @@ node scripts/serve.mjs 8080         # serves the site like GitHub Pages
 ```
 
 Then use Playwright (preinstalled in Claude Code cloud sessions) to open the
-prototype **through the viewer** at Phone and Desktop widths, in light and dark,
-take screenshots and look at them:
+prototype **through the viewer** at Phone width and on desktop (Full, in a
+browser window about 1440 × 900), in light and dark, take screenshots and look
+at them:
 
 ```
 http://localhost:8080/#/p/<slug>?w=390
-http://localhost:8080/#/p/<slug>?w=1440&theme=dark
+http://localhost:8080/#/p/<slug>?theme=dark
 http://localhost:8080/#/p/<slug>?variant=b&w=390&theme=dark
 ```
 

@@ -2,19 +2,18 @@
  * Viewer controls (SPEC.md §5.1):
  *   - top bar: prototype title and meta, variant and snapshot switchers, light/dark,
  *     open in new tab, copy link
- *   - width bar: Phone / Tablet / Laptop / Desktop / Full presets, the current width
- *     (editable) and the scale when the frame is scaled to fit
+ *   - screen-size dropdown in the top bar: Full (default), Phone, Tablet, and a
+ *     custom width when one is dragged or comes from a deep link
  */
 import { icons } from './icons.js';
-import { clampWidth } from './state.js';
 import { copyText, escapeHtml, STATUS_LABELS } from './util.js';
 
+// The viewer is used on desktop: Full is the default, and resizing the browser
+// covers the in-between sizes. Phone and Tablet are the sizes a desktop can't show.
 export const WIDTH_PRESETS = [
+  { id: 'full', label: 'Full', width: null, icon: icons.full },
   { id: 'phone', label: 'Phone', width: 390, icon: icons.phone },
   { id: 'tablet', label: 'Tablet', width: 768, icon: icons.tablet },
-  { id: 'laptop', label: 'Laptop', width: 1280, icon: icons.laptop },
-  { id: 'desktop', label: 'Desktop', width: 1440, icon: icons.desktop },
-  { id: 'full', label: 'Full', width: null, icon: icons.full },
 ];
 
 export function createTopBar(host, { onChange, onToggleSidebar }) {
@@ -35,6 +34,7 @@ export function createTopBar(host, { onChange, onToggleSidebar }) {
         <select></select>
       </label>
       <span class="pv-divider" aria-hidden="true"></span>
+      <div data-role="size"></div>
       <button type="button" class="pv-icon-button" data-action="scheme" aria-pressed="false"></button>
       <a class="pv-icon-button" data-action="open" target="_blank" rel="noopener" aria-label="Open prototype in a new tab" title="Open prototype in a new tab">${icons.external}</a>
       <button type="button" class="pv-button" data-action="copy" title="Copy a link to this exact view">${icons.link}<span>Copy link</span></button>
@@ -110,53 +110,90 @@ export function createTopBar(host, { onChange, onToggleSidebar }) {
   };
 }
 
-export function createWidthBar(host, { onChange }) {
-  host.classList.add('pv-widthbar');
+/**
+ * Screen-size dropdown in the top bar. Full (fit the window) is the default; Phone
+ * and Tablet are offered because the viewer is used on desktop, where resizing the
+ * browser covers the wider sizes. A custom width (dragged on the stage, or from a
+ * deep link) shows as its own checked entry.
+ */
+export function createSizeMenu(host, { onChange }) {
+  host.classList.add('pv-menu');
   host.innerHTML = `
-    <div class="pv-segmented" role="radiogroup" aria-label="Screen width">
-      ${WIDTH_PRESETS.map((p) => `<button type="button" role="radio" data-id="${p.id}" aria-checked="false" title="${p.label}${p.width ? ` (${p.width}px)` : ''}">${p.icon}<span>${p.label}</span></button>`).join('')}
-    </div>
-    <div class="pv-size">
-      <input type="number" min="320" max="2560" step="1" aria-label="Width in pixels" />
-      <span class="pv-size-rest"></span>
+    <button type="button" class="pv-button pv-menu-button" aria-haspopup="menu" aria-expanded="false" title="Screen size">
+      <span class="pv-menu-icon"></span><span class="pv-menu-label"></span>${icons.chevron}
+    </button>
+    <div class="pv-menu-popup" role="menu" aria-label="Screen size" hidden>
+      ${WIDTH_PRESETS.map((p) => `
+        <button type="button" role="menuitemradio" data-id="${p.id}" aria-checked="false">
+          ${p.icon}<span class="pv-menu-item-label">${p.label}</span><span class="pv-menu-item-hint">${p.width ? `${p.width} px` : 'fit window'}</span>
+        </button>`).join('')}
+      <button type="button" role="menuitemradio" data-id="custom" aria-checked="true" hidden>
+        ${icons.resize}<span class="pv-menu-item-label">Custom</span><span class="pv-menu-item-hint"></span>
+      </button>
+      <div class="pv-menu-footer">Drag the frame's edges for any other width.</div>
     </div>`;
-  const group = host.querySelector('.pv-segmented');
-  const input = host.querySelector('input');
-  const rest = host.querySelector('.pv-size-rest');
+  const button = host.querySelector('.pv-menu-button');
+  const popup = host.querySelector('.pv-menu-popup');
+  const items = () => [...popup.querySelectorAll('[role=menuitemradio]:not([hidden])')];
+  const custom = popup.querySelector('[data-id=custom]');
   let width = null;
+  let layout = { width: 0, height: 0, scale: 1 };
 
-  group.addEventListener('click', (e) => {
-    const b = e.target.closest('button[data-id]');
-    if (b) onChange(WIDTH_PRESETS.find((p) => p.id === b.dataset.id).width);
+  const open = (focusFirst) => {
+    popup.hidden = false;
+    button.setAttribute('aria-expanded', 'true');
+    const target = items().find((i) => i.getAttribute('aria-checked') === 'true') ?? items()[0];
+    if (focusFirst) target.focus();
+    document.addEventListener('pointerdown', outside, true);
+    document.addEventListener('keydown', escape, true);
+  };
+  const close = (refocus) => {
+    popup.hidden = true;
+    button.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('pointerdown', outside, true);
+    document.removeEventListener('keydown', escape, true);
+    if (refocus) button.focus();
+  };
+  const outside = (e) => { if (!host.contains(e.target)) close(false); };
+  const escape = (e) => { if (e.key === 'Escape') { e.preventDefault(); close(true); } };
+
+  button.addEventListener('click', () => (popup.hidden ? open(false) : close(false)));
+  button.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); open(true); }
   });
-  // While the user is typing a width, don't overwrite the field.
-  let editing = false;
-  input.addEventListener('input', () => { editing = true; });
-  input.addEventListener('blur', () => { editing = false; });
-  input.addEventListener('change', () => {
-    editing = false;
-    const v = Number.parseInt(input.value, 10);
-    if (Number.isFinite(v)) onChange(clampWidth(v));
+  popup.addEventListener('click', (e) => {
+    const item = e.target.closest('[role=menuitemradio]');
+    if (!item) return;
+    close(true);
+    if (item.dataset.id !== 'custom') onChange(WIDTH_PRESETS.find((p) => p.id === item.dataset.id).width);
   });
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-      // Let the number input step, then apply on the next tick.
-      setTimeout(() => input.dispatchEvent(new Event('change')));
+  popup.addEventListener('keydown', (e) => {
+    const list = items();
+    const i = list.indexOf(document.activeElement);
+    if (e.key === 'Tab') { e.preventDefault(); close(true); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); list[(i + 1) % list.length].focus(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); list[(i - 1 + list.length) % list.length].focus(); }
+    else if (e.key === 'Home') { e.preventDefault(); list[0].focus(); }
+    else if (e.key === 'End') { e.preventDefault(); list[list.length - 1].focus(); }
+  });
+
+  function update() {
+    const preset = WIDTH_PRESETS.find((p) => p.width === width);
+    for (const item of popup.querySelectorAll('[data-id]:not([data-id=custom])')) {
+      item.setAttribute('aria-checked', String(item.dataset.id === preset?.id));
     }
-  });
+    custom.hidden = !!preset;
+    custom.querySelector('.pv-menu-item-hint').textContent = `${width} px`;
+    const scale = layout.scale < 0.999 ? ` · ${Math.round(layout.scale * 100)}%` : '';
+    host.querySelector('.pv-menu-icon').innerHTML = (preset ?? { icon: icons.resize }).icon;
+    host.querySelector('.pv-menu-label').textContent = preset?.width === null ? 'Full' : `${preset?.label ?? 'Custom'} ${width} px${scale}`;
+    button.title = `Screen size: ${layout.width} × ${layout.height} px${scale}`;
+    button.setAttribute('aria-label', button.title);
+  }
 
   return {
-    setWidth(w) {
-      width = w;
-      for (const b of group.querySelectorAll('button')) {
-        const preset = WIDTH_PRESETS.find((p) => p.id === b.dataset.id);
-        b.setAttribute('aria-checked', String(preset.width === w));
-      }
-    },
-    /** Shows the rendered size: the width (editable), height, and scale if < 100%. */
-    setLayout({ width: w, height, scale }) {
-      if (!editing) input.value = String(w);
-      rest.textContent = `× ${height} px${scale < 0.999 ? ` · ${Math.round(scale * 100)}%` : ''}${width === null ? ' · full' : ''}`;
-    },
+    setWidth(w) { width = w; update(); },
+    /** The rendered frame size and scale (shown in the button's tooltip and label). */
+    setLayout(info) { layout = info; update(); },
   };
 }

@@ -9,7 +9,7 @@
  * `npm i -g playwright && npx playwright install chromium`).
  *
  * Starts its own server with GitHub Pages-like caching (scripts/serve.mjs --pages),
- * rebuilds manifest.json, then checks: prototype switching, width presets and drag,
+ * rebuilds manifest.json, then checks: prototype switching, the size menu and drag,
  * light/dark through the theme adapters (Aura and Lumo), variants, snapshots, deep
  * links and copy link, search, archived filter, history, no external requests, no
  * console errors, and the prototype-switch time against the ~500 ms target.
@@ -94,28 +94,36 @@ function check(name, ok, detail = '') {
       await page.screenshot({ path: path.join(shots, `switch-${slug}.png`) });
     }
 
-    // 3. Widths: presets set the iframe's own width (media queries see it).
+    // 3. Widths: the size dropdown sets the iframe's own width (media queries see it).
+    async function pickSize(id) {
+      await page.click('[data-role=size] .pv-menu-button');
+      await page.click(`[data-role=size] [role=menuitemradio][data-id="${id}"]`);
+      await page.waitForTimeout(150);
+    }
+    const sizeLabel = () => page.$eval('[data-role=size] .pv-menu-button', (b) => b.textContent.replace(/\s+/g, ' ').trim());
     n = await readyCount();
     await page.click('a.pv-item[data-slug="order-list-bulk-actions"]');
     await waitReady(n);
-    for (const [label, w] of [['Phone', 390], ['Tablet', 768], ['Laptop', 1280], ['Desktop', 1440]]) {
-      await page.click(`.pv-widthbar button[title^="${label}"]`);
-      await page.waitForTimeout(150);
+    const offered = await page.$$eval('[data-role=size] [role=menuitemradio]:not([hidden])', (els) => els.map((e) => e.dataset.id));
+    check('size menu offers Full, Phone, Tablet', offered.join() === 'full,phone,tablet', offered.join(', '));
+    check('size defaults to Full', (await sizeLabel()) === 'Full' && !(await hashState()).includes('w='));
+    for (const [id, w] of [['phone', 390], ['tablet', 768]]) {
+      await pickSize(id);
       const info = await frameInfo();
-      check(`width preset ${label}`, info.innerWidth === w && (await hashState()).includes(`w=${w}`), `frame innerWidth ${info.innerWidth}`);
-      await page.screenshot({ path: path.join(shots, `width-${label.toLowerCase()}.png`) });
+      check(`size ${id}`, info.innerWidth === w && (await hashState()).includes(`w=${w}`) && (await sizeLabel()).includes(`${w} px`), `frame innerWidth ${info.innerWidth}, button "${await sizeLabel()}"`);
+      await page.screenshot({ path: path.join(shots, `width-${id}.png`) });
     }
-    await page.click('.pv-widthbar button[title="Full"]');
-    await page.waitForTimeout(150);
+    await page.click('[data-role=size] .pv-menu-button');
+    await page.screenshot({ path: path.join(shots, 'size-menu-open.png') });
+    await page.keyboard.press('Escape');
+    check('Escape closes the size menu', await page.$eval('.pv-menu-popup', (p) => p.hidden));
+    await pickSize('full');
     const full = await frameInfo();
     const stageW = await page.$eval('.pv-canvas', (c) => c.clientWidth);
-    check('width preset Full fills the stage', !(await hashState()).includes('w=') && Math.abs(full.innerWidth - (stageW - 40)) <= 1, `${full.innerWidth}px of ${stageW}px stage`);
+    check('Full fills the stage', !(await hashState()).includes('w=') && Math.abs(full.innerWidth - (stageW - 40)) <= 1, `${full.innerWidth}px of ${stageW}px stage`);
 
-    // Custom width: typing and dragging.
-    await page.fill('.pv-size input', '1000');
-    await page.press('.pv-size input', 'Enter');
-    await page.waitForTimeout(150);
-    check('custom width by typing', (await frameInfo()).innerWidth === 1000 && (await hashState()).includes('w=1000'));
+    // Custom width: dragging a handle (starting from Tablet), and a deep link wider than the stage.
+    await pickSize('tablet');
     const handle = await page.$('.pv-handle[data-side="1"]');
     const hb = await handle.boundingBox();
     await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
@@ -124,9 +132,18 @@ function check(name, ok, detail = '') {
     await page.mouse.up();
     await page.waitForTimeout(150);
     const dragged = (await frameInfo()).innerWidth;
-    check('custom width by dragging a handle', dragged === 1120 && (await hashState()).includes(`w=${dragged}`), `1000 → ${dragged}px (frame at 100%: +2×60)`);
-    const sizeText = await page.$eval('.pv-size', (el) => el.textContent.replace(/\s+/g, ' '));
-    check('current width is shown', (await page.$eval('.pv-size input', (i) => i.value)) === String(dragged), sizeText.trim());
+    check('custom width by dragging a handle', dragged === 888 && (await hashState()).includes(`w=${dragged}`), `768 → ${dragged}px (+2×60)`);
+    check('custom width shows in the size button', (await sizeLabel()) === `Custom ${dragged} px`, await sizeLabel());
+    await page.click('[data-role=size] .pv-menu-button');
+    const customChecked = await page.$eval('[data-role=size] [data-id=custom]', (e) => !e.hidden && e.getAttribute('aria-checked') === 'true');
+    await page.keyboard.press('Escape');
+    check('custom width is a checked menu entry', customChecked);
+    n = await readyCount();
+    await page.goto(`${BASE}#/p/order-list-bulk-actions?w=1600`);
+    await page.waitForTimeout(300);
+    const wide = await frameInfo();
+    check('a too-wide width is scaled to fit and the scale shown', wide.innerWidth === 1600 && /Custom 1600 px · \d+%/.test(await sizeLabel()), await sizeLabel());
+    await pickSize('full');
 
     // 4. Light/dark through the adapters: Aura (color-scheme) and Lumo (theme="dark" too).
     const lightAura = await frameInfo();
@@ -192,7 +209,7 @@ function check(name, ok, detail = '') {
     n = await readyCount();
     await page.click('[data-role=variant] button[data-id=b]');
     await waitReady(n);
-    await page.click('.pv-widthbar button[title^="Phone"]');
+    await pickSize('phone');
     await page.click('[data-action=scheme]');
     await page.click('[data-action=copy]');
     await page.waitForTimeout(150);
@@ -212,7 +229,7 @@ function check(name, ok, detail = '') {
         innerWidth: f.contentWindow.innerWidth,
         colorScheme: f.contentDocument.documentElement.style.colorScheme,
         variantChecked: document.querySelector('[data-role=variant] [aria-checked=true]')?.dataset.id,
-        widthChecked: document.querySelector('.pv-widthbar [aria-checked=true]')?.dataset.id,
+        widthChecked: document.querySelector('[data-role=size] [role=menuitemradio][aria-checked=true]:not([hidden])')?.dataset.id,
         schemePressed: document.querySelector('[data-action=scheme]').getAttribute('aria-pressed'),
       };
     });

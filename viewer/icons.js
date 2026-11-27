@@ -12,7 +12,7 @@ export const icons = {
   check: svg('<path d="m5 12 5 5 9-10"/>'),
   phone: svg('<rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/>'),
   tablet: svg('<rect x="4.5" y="2.5" width="15" height="19" rx="2"/><path d="M11 18.5h2"/>'),
-  laptop: svg('<rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/>'),
-  desktop: svg('<rect x="2.5" y="3.5" width="19" height="13" rx="1.5"/><path d="M9 20.5h6M12 16.5v4"/>'),
+  chevron: svg('<path d="m7 10 5 5 5-5"/>').replace('width="18" height="18"', 'width="14" height="14"'),
+  resize: svg('<path d="M8 7 3 12l5 5M16 7l5 5-5 5M3 12h18"/>'),
   full: svg('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>'),
 };
