@@ -1,5 +1,5 @@
 /**
- * Light/dark adapters, one per Vaadin theme (SPEC.md §5.3).
+ * Light/dark adapters, one per Vaadin theme (docs/SPEC.md §5.3).
  *
  * This is the only file in the viewer that knows how the themes differ. Each
  * adapter gets the prototype's document (same origin, so the viewer can reach it

@@ -1,7 +1,7 @@
 # Setting up a new customer site
 
 Each customer gets their own repository, made from this template, and their own
-site on GitHub Pages (SPEC.md C3). Per customer this takes about 10 minutes, all in
+site on GitHub Pages ([SPEC.md](SPEC.md) C3). Per customer this takes about 10 minutes, all in
 the browser.
 
 ## Once per organisation
@@ -39,7 +39,7 @@ at `https://<owner>.github.io/<name>/`.
 *Private or public?* Private keeps the prototype source and history out of view, but
 GitHub Pages for a private repository needs a paid GitHub plan (Team or Enterprise).
 Either way the **site itself is public** to anyone who has its address; only comments
-are protected (SPEC.md §2).
+are protected ([SPEC.md](SPEC.md) §2).
 
 GitHub may try to deploy right away and show a failed "Deploy to GitHub Pages" run.
 That's harmless: Pages isn't turned on yet.

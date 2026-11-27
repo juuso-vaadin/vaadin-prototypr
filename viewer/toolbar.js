@@ -1,5 +1,5 @@
 /**
- * Viewer controls (SPEC.md §5.1):
+ * Viewer controls (docs/SPEC.md §5.1):
  *   - top bar: prototype title and meta, variant and snapshot switchers, light/dark,
  *     open in new tab, copy link
  *   - screen-size dropdown in the top bar: Full (default), Phone, Tablet, and a

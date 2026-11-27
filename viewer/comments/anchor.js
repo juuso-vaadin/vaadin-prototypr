@@ -1,5 +1,5 @@
 /**
- * Comment anchors (SPEC.md §6.4): turning a click in the prototype into a stable
+ * Comment anchors (docs/SPEC.md §6.4): turning a click in the prototype into a stable
  * reference, and finding that reference again later.
  *
  * anchor = {

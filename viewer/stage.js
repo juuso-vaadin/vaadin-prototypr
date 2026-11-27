@@ -1,5 +1,5 @@
 /**
- * The stage: the prototype iframe at a chosen width (SPEC.md §5.1, §5.3).
+ * The stage: the prototype iframe at a chosen width (docs/SPEC.md §5.1, §5.3).
  *
  * - Width is the iframe's own width, so the prototype's media queries behave as on
  *   a real screen. When the width doesn't fit, the frame is scaled down to fit (the

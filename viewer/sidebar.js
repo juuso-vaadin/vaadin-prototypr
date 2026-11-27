@@ -1,5 +1,5 @@
 /**
- * Prototype list (SPEC.md §5.1): grouped by area, searchable (title, area,
+ * Prototype list (docs/SPEC.md §5.1): grouped by area, searchable (title, area,
  * description), status badges, archived prototypes hidden by default.
  * Items are plain links to the deep-link hash, so middle-click and copy work.
  */

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * check-viewer.cjs: end-to-end check of the viewer with Playwright (M2, SPEC.md §5, §7.1).
+ * check-viewer.cjs: end-to-end check of the viewer with Playwright (M2, docs/SPEC.md §5, §7.1).
  *
  *   node scripts/check-viewer.cjs [screenshot-dir]
  *
