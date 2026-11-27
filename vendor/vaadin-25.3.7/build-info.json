@@ -1,0 +1,106 @@
+{
+  "version": "25.3.7",
+  "built": "2026-11-26T13:41:03.423Z",
+  "builtWith": "esbuild 0.25.12, node v22.23.5",
+  "themes": {
+    "aura": "aura.css",
+    "lumo": "lumo.css",
+    "base": "base.css"
+  },
+  "optional": {
+    "lumo-utility": "lumo-utility.css"
+  },
+  "packages": [
+    "@vaadin/accordion",
+    "@vaadin/app-layout",
+    "@vaadin/avatar",
+    "@vaadin/avatar-group",
+    "@vaadin/badge",
+    "@vaadin/breadcrumbs",
+    "@vaadin/button",
+    "@vaadin/card",
+    "@vaadin/checkbox",
+    "@vaadin/checkbox-group",
+    "@vaadin/combo-box",
+    "@vaadin/confirm-dialog",
+    "@vaadin/context-menu",
+    "@vaadin/custom-field",
+    "@vaadin/date-picker",
+    "@vaadin/date-time-picker",
+    "@vaadin/details",
+    "@vaadin/dialog",
+    "@vaadin/email-field",
+    "@vaadin/form-layout",
+    "@vaadin/grid",
+    "@vaadin/horizontal-layout",
+    "@vaadin/icon",
+    "@vaadin/icons",
+    "@vaadin/integer-field",
+    "@vaadin/item",
+    "@vaadin/list-box",
+    "@vaadin/login",
+    "@vaadin/markdown",
+    "@vaadin/master-detail-layout",
+    "@vaadin/menu-bar",
+    "@vaadin/message-input",
+    "@vaadin/message-list",
+    "@vaadin/multi-select-combo-box",
+    "@vaadin/notification",
+    "@vaadin/number-field",
+    "@vaadin/password-field",
+    "@vaadin/popover",
+    "@vaadin/progress-bar",
+    "@vaadin/radio-group",
+    "@vaadin/scroller",
+    "@vaadin/select",
+    "@vaadin/side-nav",
+    "@vaadin/slider",
+    "@vaadin/split-layout",
+    "@vaadin/switch",
+    "@vaadin/tabs",
+    "@vaadin/tabsheet",
+    "@vaadin/text-area",
+    "@vaadin/text-field",
+    "@vaadin/time-picker",
+    "@vaadin/tooltip",
+    "@vaadin/upload",
+    "@vaadin/vertical-layout",
+    "@vaadin/virtual-list"
+  ],
+  "themePackages": [
+    "@vaadin/aura",
+    "@vaadin/vaadin-lumo-styles"
+  ],
+  "sizes": [
+    {
+      "file": "aura.css",
+      "bytes": 80976,
+      "gzip": 13009
+    },
+    {
+      "file": "base.css",
+      "bytes": 466,
+      "gzip": 296
+    },
+    {
+      "file": "fonts/InstrumentSans.woff2",
+      "bytes": 88476,
+      "gzip": 88491
+    },
+    {
+      "file": "lumo-utility.css",
+      "bytes": 34933,
+      "gzip": 5077
+    },
+    {
+      "file": "lumo.css",
+      "bytes": 244405,
+      "gzip": 43139
+    },
+    {
+      "file": "vaadin.js",
+      "bytes": 1254405,
+      "gzip": 317249
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "vaadin-prototypr",
+  "private": true,
+  "type": "module",
+  "description": "Per-customer viewer for Vaadin HTML prototypes. No runtime dependencies.",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "manifest": "node scripts/build-manifest.mjs",
+    "serve": "node scripts/build-manifest.mjs && node scripts/serve.mjs",
+    "build-vendor": "node scripts/build-vendor.mjs",
+    "check": "node scripts/check-viewer.cjs && node scripts/check-comments.cjs"
+  }
+}

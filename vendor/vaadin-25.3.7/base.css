@@ -1,0 +1,6 @@
+/* Vaadin 25.3.7 base styles.
+ * The component base styles are built into each component (vaadin.js) and apply
+ * whenever no theme stylesheet is loaded. They style the components only, so this
+ * file gives the page a font and the base background/text colors. Light/dark:
+ * the color-scheme property on <html>. */
+html{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background-color:var(--vaadin-background-color);color:var(--vaadin-text-color)}

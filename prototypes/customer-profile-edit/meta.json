@@ -1,0 +1,11 @@
+{
+  "title": "Customer profile – edit",
+  "area": "Customers",
+  "description": "One page for viewing and editing a customer: details form, addresses and recent activity in tabs. Built with Lumo to check that the viewer is theme-agnostic.",
+  "created": "2026-11-26",
+  "status": "draft",
+  "vendor": "vaadin-25.3.7",
+  "theme": "lumo",
+  "variants": [],
+  "snapshots": []
+}

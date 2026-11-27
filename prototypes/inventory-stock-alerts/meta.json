@@ -1,0 +1,13 @@
+{
+  "title": "Inventory – stock alerts",
+  "area": "Inventory",
+  "description": "Shows products below their minimum stock level and lets a buyer reorder them in one step. v1 was the first review version, before KPI cards and the supplier panel.",
+  "created": "2026-11-24",
+  "status": "approved",
+  "vendor": "vaadin-25.3.7",
+  "theme": "aura",
+  "variants": [],
+  "snapshots": [
+    { "id": "v1", "label": "Review 2026-11-25" }
+  ]
+}
